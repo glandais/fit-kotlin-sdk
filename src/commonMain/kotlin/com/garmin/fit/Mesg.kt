@@ -35,15 +35,20 @@ public open class Mesg(
     public var decoderMesgIndex: Int = 0
         internal set
 
-    /** Copy constructor. Drops fields that ended up with no values. */
+    /**
+     * Copy constructor. Drops fields that ended up with no values.
+     *
+     * The fields are deep-copied: a copy and its original share no mutable
+     * state, so mutating either one leaves the other untouched.
+     */
     public constructor(other: Mesg) : this(other.mesgName, other.globalMesgNum) {
         localMesgNum = other.localMesgNum
         decoderMesgIndex = other.decoderMesgIndex
         for ((num, field) in other.fieldMap) {
-            if (field.hasValues) fieldMap[num] = field
+            if (field.hasValues) fieldMap[num] = Field(field)
         }
         for ((key, field) in other.developerFieldMap) {
-            if (field.hasValues) developerFieldMap[key] = field
+            if (field.hasValues) developerFieldMap[key] = DeveloperField(field)
         }
     }
 

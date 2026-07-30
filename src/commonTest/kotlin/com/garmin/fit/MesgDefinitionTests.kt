@@ -79,6 +79,54 @@ class MesgDefinitionTests {
         assertFalse(a.hasSameLayout(c))
     }
 
+    /** Same fields under a different architecture is a different layout. */
+    @Test
+    fun layoutEqualityAccountsForTheArchitecture() {
+        val fields = listOf(FieldDefinition(0u, 2, BaseType.UINT16))
+        val little = MesgDefinition(0u, 20u, Endianness.LITTLE, fields)
+        val big = MesgDefinition(0u, 20u, Endianness.BIG, fields)
+
+        assertFalse(little.hasSameLayout(big))
+        assertFalse(little == big)
+    }
+
+    @Test
+    fun theArchitectureByteIsTheOneTheDefinitionCarries() {
+        val fields = listOf(FieldDefinition(0u, 2, BaseType.UINT16))
+        val writer = ByteWriter()
+        MesgDefinition(0u, 0x1234u, Endianness.BIG, fields).write(writer)
+        val bytes = writer.toByteArray()
+
+        assertEquals(Endianness.BIG.value, bytes[2].toUByte())
+        // The global message number follows the architecture it announced.
+        assertEquals(0x12.toByte(), bytes[3])
+        assertEquals(0x34.toByte(), bytes[4])
+    }
+
+    @Test
+    fun aBigEndianDefinitionSurvivesAWriteReadRoundTrip() {
+        val original = MesgDefinition(
+            localMesgNum = 2u,
+            globalMesgNum = 20u,
+            endianness = Endianness.BIG,
+            fieldDefinitions = listOf(
+                FieldDefinition(253u, 4, BaseType.UINT32),
+                FieldDefinition(0u, 4, BaseType.SINT32),
+            ),
+        )
+
+        val writer = ByteWriter()
+        original.write(writer)
+
+        val reader = ByteReader(writer.toByteArray())
+        val header = reader.readByte()
+        val roundTripped = MesgDefinition.read(reader, header)
+
+        assertEquals(Endianness.BIG, roundTripped.endianness)
+        assertEquals(20u.toUShort(), roundTripped.globalMesgNum)
+        assertEquals(original, roundTripped)
+    }
+
     @Test
     fun aDefinitionDerivedFromAMessageCoversItsPopulatedFields() {
         val mesg = Mesg("Test", 20u)

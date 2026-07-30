@@ -36,6 +36,11 @@ public class DeveloperField(
     /** Identity of this field across the file: application, index and number. */
     public val key: DeveloperDataKey get() = DeveloperDataKey(applicationId?.toList(), developerDataIndex, fieldNum)
 
+    /**
+     * Copies the description and the values, sharing nothing mutable with
+     * [other] — the application UUID included, since a `ByteArray` handed out
+     * as-is would let a copy rewrite the original's identity.
+     */
     internal constructor(other: DeveloperField) : this(
         other.fieldName,
         other.fieldNum,
@@ -45,8 +50,9 @@ public class DeveloperField(
         other.scale,
         other.offset,
         other.nativeFieldNum,
-        other.applicationId,
+        other.applicationId?.copyOf(),
     ) {
+        declaredTypeId = other.declaredTypeId
         values.addAll(other.values)
     }
 

@@ -96,7 +96,9 @@ internal class MesgCursor(
         } else {
             Fit.HEADER_WITH_CRC_SIZE
         }
-        reader.seek(start + headerSize)
+        // The declared header size is not trusted either, so a stream shorter
+        // than it claims lands at the end of the input rather than erroring.
+        reader.seek((start + headerSize).coerceIn(reader.position, reader.size))
 
         val declaredEnd = start + headerSize + header.dataSize.toInt()
         fileEnd = if (header.dataSize > 0u && declaredEnd <= reader.size) {
@@ -110,11 +112,27 @@ internal class MesgCursor(
         val calculated = reader.crc?.value
         reader.crc = null
 
-        if (options.mode != DecodeMode.DATA_ONLY && reader.bytesAvailable >= Fit.CRC_SIZE) {
-            val recorded = reader.readUShort()
-            if (options.mode == DecodeMode.NORMAL && recorded != calculated) {
+        if (options.mode != DecodeMode.DATA_ONLY) {
+            if (reader.bytesAvailable >= Fit.CRC_SIZE) {
+                val recorded = reader.readUShort()
+                if (options.mode == DecodeMode.NORMAL && recorded != calculated) {
+                    fileEnd = -1
+                    throw FitFormatException("CRC mismatch: file says $recorded, computed $calculated", reader.position - 2)
+                }
+            } else if (options.mode == DecodeMode.NORMAL) {
+                // Every FIT file ends with a two-byte CRC, so a stream that runs
+                // out before it was truncated: reporting it is the only way a
+                // caller can tell a whole file from most of one. In a chained
+                // stream this can only be the last file, the earlier ones having
+                // been followed by more bytes. SKIP_HEADER cannot tell where a
+                // file ends, and DATA_ONLY expects no CRC at all, so neither
+                // mode complains.
+                val available = reader.bytesAvailable
                 fileEnd = -1
-                throw FitFormatException("CRC mismatch: file says $recorded, computed $calculated", reader.position - 2)
+                throw FitFormatException(
+                    "file ends before its CRC: $available of ${Fit.CRC_SIZE} bytes left",
+                    reader.position,
+                )
             }
         }
 

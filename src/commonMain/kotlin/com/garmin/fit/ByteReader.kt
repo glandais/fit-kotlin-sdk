@@ -42,13 +42,23 @@ public class ByteReader(
         crc?.reset()
     }
 
+    /**
+     * Moves the cursor to [position].
+     *
+     * An out-of-range target is a [FitFormatException] rather than an
+     * [IllegalArgumentException]: every seek here is driven by lengths read out
+     * of the file, so a bad one means bad input, and the decoder's promise never
+     * to let anything but a [FitException] escape depends on it.
+     */
     public fun seek(position: Int) {
-        require(position in 0..bytes.size) { "position $position out of range 0..${bytes.size}" }
+        if (position < 0 || position > bytes.size) {
+            throw FitFormatException("tried to seek to $position, outside 0..${bytes.size}", this.position)
+        }
         this.position = position
     }
 
     public fun skip(count: Int) {
-        require(count >= 0) { "skip count must not be negative: $count" }
+        if (count < 0) throw FitFormatException("tried to skip a negative count: $count", position)
         val end = position + count
         if (end > bytes.size) throw FitFormatException("tried to skip $count bytes with only $bytesAvailable remaining", position)
         crc?.update(bytes, position, end)
@@ -67,6 +77,7 @@ public class ByteReader(
     }
 
     public fun readBytes(count: Int): ByteArray {
+        if (count < 0) throw FitFormatException("tried to read a negative count: $count", position)
         if (count > bytesAvailable) throw FitFormatException("tried to read $count bytes with only $bytesAvailable remaining", position)
         val slice = bytes.copyOfRange(position, position + count)
         crc?.update(bytes, position, position + count)

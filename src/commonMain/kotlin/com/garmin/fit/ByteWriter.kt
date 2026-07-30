@@ -12,7 +12,9 @@
 package com.garmin.fit
 
 /**
- * A growable little-endian byte sink.
+ * A growable byte sink. Multi-byte writes default to little-endian, which is what
+ * every FIT producer uses, but take the endianness the caller's message
+ * definition announced.
  *
  * [replaceRange] exists for one reason: a FIT file header states the size of the
  * data that follows it, which is only known once encoding is done, so the

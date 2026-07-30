@@ -18,6 +18,12 @@ package com.garmin.fit
  * FIT data records identify themselves only by a 4-bit local number; the
  * definition that most recently claimed that number says what the bytes mean.
  * An encoder therefore emits a definition whenever the active layout changes.
+ *
+ * [endianness] is the architecture the definition announces, and it governs every
+ * multi-byte value that follows it: the global message number in the definition
+ * record itself, and every field of every data record written under it. It is
+ * carried through [write] and [Mesg.write], so a BIG definition produces a
+ * big-endian record that reads back identically.
  */
 public class MesgDefinition(
     public val localMesgNum: UByte,
@@ -40,8 +46,8 @@ public class MesgDefinition(
 
         writer.writeByte(header.toUByte())
         writer.writeByte(0u) // reserved
-        writer.writeByte(Endianness.LITTLE.value)
-        writer.writeUShort(globalMesgNum)
+        writer.writeByte(endianness.value)
+        writer.writeUShort(globalMesgNum, endianness)
         writer.writeByte(numFields.toUByte())
         fieldDefinitions.forEach { it.write(writer) }
 
@@ -51,9 +57,16 @@ public class MesgDefinition(
         }
     }
 
-    /** Definition-level equality, ignoring the local number the layout is bound to. */
+    /**
+     * Definition-level equality, ignoring the local number the layout is bound to.
+     *
+     * [endianness] counts as part of the layout: two definitions listing the same
+     * fields under different architectures decode differently, so an encoder must
+     * emit a fresh definition record rather than reuse the bound one.
+     */
     public fun hasSameLayout(other: MesgDefinition): Boolean =
         globalMesgNum == other.globalMesgNum &&
+            endianness == other.endianness &&
             fieldDefinitions == other.fieldDefinitions &&
             developerFieldDefinitions == other.developerFieldDefinitions
 
@@ -66,6 +79,7 @@ public class MesgDefinition(
     override fun hashCode(): Int {
         var result = localMesgNum.toInt()
         result = 31 * result + globalMesgNum.toInt()
+        result = 31 * result + endianness.hashCode()
         result = 31 * result + fieldDefinitions.hashCode()
         result = 31 * result + developerFieldDefinitions.hashCode()
         return result
@@ -75,12 +89,16 @@ public class MesgDefinition(
         "MesgDefinition(local=$localMesgNum, global=$globalMesgNum, fields=$numFields)"
 
     public companion object {
-        /** The layout needed to write [mesg], bound to [localMesgNum]. */
-        public fun of(mesg: Mesg, localMesgNum: UByte): MesgDefinition =
+        /** The layout needed to write [mesg], bound to [localMesgNum] and [endianness]. */
+        public fun of(
+            mesg: Mesg,
+            localMesgNum: UByte,
+            endianness: Endianness = Endianness.LITTLE,
+        ): MesgDefinition =
             MesgDefinition(
                 localMesgNum = localMesgNum,
                 globalMesgNum = mesg.globalMesgNum,
-                endianness = Endianness.LITTLE,
+                endianness = endianness,
                 fieldDefinitions = mesg.fieldList.filter { it.hasValues }.map { FieldDefinition(it) },
                 developerFieldDefinitions = mesg.developerFieldList
                     .filter { it.hasValues }

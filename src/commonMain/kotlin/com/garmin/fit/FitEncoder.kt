@@ -37,11 +37,18 @@ public class FitEncoder(
      */
     private val protocolVersionByte: UByte = ProtocolVersion.V2_0.value,
     private val profileVersion: UShort = Fit.PROFILE_VERSION,
+    /**
+     * Architecture announced by the message definitions this encoder emits, and
+     * used for every multi-byte field value written under them. The file header
+     * itself is always little-endian, as the protocol requires.
+     */
+    public val endianness: Endianness = Endianness.LITTLE,
 ) {
     public constructor(
         protocolVersion: ProtocolVersion,
         profileVersion: UShort = Fit.PROFILE_VERSION,
-    ) : this(protocolVersion.value, profileVersion)
+        endianness: Endianness = Endianness.LITTLE,
+    ) : this(protocolVersion.value, profileVersion, endianness)
 
     private val writer = ByteWriter()
 
@@ -71,7 +78,7 @@ public class FitEncoder(
     public fun write(mesg: Mesg): FitEncoder {
         check(!closed) { "this encoder is closed" }
 
-        val definition = MesgDefinition.of(mesg, 0u)
+        val definition = MesgDefinition.of(mesg, 0u, endianness)
         val local = localMesgNumFor(definition)
 
         val bound = MesgDefinition(
@@ -165,6 +172,11 @@ public class FitEncoder(
  * ```kotlin
  * val bytes = encodeFit { write(FileIdMesg()) }
  * ```
+ *
+ * [endianness] is the architecture the emitted definitions announce; little-endian
+ * is what every Garmin producer writes, and reading is unaffected either way.
  */
-public inline fun encodeFit(block: FitEncoder.() -> Unit): ByteArray =
-    FitEncoder().apply(block).close()
+public inline fun encodeFit(
+    endianness: Endianness = Endianness.LITTLE,
+    block: FitEncoder.() -> Unit,
+): ByteArray = FitEncoder(endianness = endianness).apply(block).close()

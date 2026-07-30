@@ -22,8 +22,9 @@ package com.garmin.fit
  *
  * [decode] never throws on malformed input: it returns everything that decoded
  * before the problem alongside a description of it, because a truncated file
- * usually still holds most of an activity. The streaming entry points do throw,
- * since they have no result object to carry the error in.
+ * usually still holds most of an activity. Neither does [read], which reports
+ * through its return value. Only [asSequence] throws, having no place to carry
+ * an error.
  */
 public class FitDecoder(
     private val bytes: ByteArray,
@@ -39,6 +40,10 @@ public class FitDecoder(
             while (cursor.hasNext()) cursor.next()
             true
         } catch (_: FitException) {
+            false
+        } catch (_: Throwable) {
+            // Same safety net as decode(): an integrity check is a question, not
+            // an operation that may fail.
             false
         }
     }
@@ -65,6 +70,11 @@ public class FitDecoder(
             errors.add(FitError(e))
         } catch (e: FitException) {
             errors.add(FitError(e.message ?: "decode error", -1, e))
+        } catch (e: Throwable) {
+            // Last-resort net. Malformed input is supposed to surface as a
+            // FitFormatException, but decode() promises never to throw, so an
+            // unforeseen failure becomes an error entry rather than escaping.
+            errors.add(FitError(unexpectedMessage(e), -1, e))
         } finally {
             profileVersion = cursor.profileVersion
             messages.developerFieldDescriptions.addAll(cursor.developerData.fieldDescriptions)
@@ -81,14 +91,31 @@ public class FitDecoder(
      * Decodes lazily, handing each message to [onMesg] as it is read.
      *
      * Nothing is retained, so this is the entry point for files too large to
-     * hold decoded in memory. Returns the errors that stopped the decode, if any.
+     * hold decoded in memory. Returns the errors that stopped the decode, if
+     * any: like [decode], it never throws on malformed input. An exception
+     * raised by [onMesg] itself does propagate.
      */
     public fun read(options: DecodeOptions = DecodeOptions(), onMesg: (Mesg) -> Unit): List<FitError> {
         val errors = mutableListOf<FitError>()
-        try {
-            for (mesg in asSequence(options)) onMesg(mesg)
-        } catch (e: FitFormatException) {
-            errors.add(FitError(e))
+        val iterator = asSequence(options).iterator()
+        while (true) {
+            // Only the decode is guarded: an exception out of [onMesg] is the
+            // caller's own and must not be swallowed as a file error.
+            val mesg = try {
+                if (!iterator.hasNext()) break
+                iterator.next()
+            } catch (e: FitFormatException) {
+                errors.add(FitError(e))
+                break
+            } catch (e: FitException) {
+                errors.add(FitError(e.message ?: "decode error", -1, e))
+                break
+            } catch (e: Throwable) {
+                // See decode(): anything unforeseen is reported, not thrown.
+                errors.add(FitError(unexpectedMessage(e), -1, e))
+                break
+            }
+            onMesg(mesg)
         }
         return errors
     }
@@ -112,7 +139,16 @@ public class FitDecoder(
                 header.isValid && bytes.size >= header.headerSize + header.dataSize.toInt()
             } catch (_: FitException) {
                 false
+            } catch (_: Throwable) {
+                false
             }
+        }
+
+        /** Describes an exception the decoder was not expecting to see at all. */
+        private fun unexpectedMessage(e: Throwable): String {
+            val kind = e::class.simpleName ?: "error"
+            val detail = e.message
+            return if (detail.isNullOrEmpty()) "unexpected $kind while decoding" else "unexpected $kind while decoding: $detail"
         }
     }
 }

@@ -14,6 +14,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -172,6 +173,75 @@ class EncoderTests {
         encoder.write(listOf(RecordMesg(), RecordMesg()))
         assertEquals(3, encoder.mesgCount)
         encoder.close()
+    }
+
+    /**
+     * A big-endian encoder must announce BIG and then actually write big-endian,
+     * so that its own decoder reads the values back unchanged.
+     */
+    @Test
+    fun aBigEndianFileRoundTrips() {
+        val bytes = encodeFit(Endianness.BIG) {
+            write(fileId())
+            write(RecordMesg().apply { heartRate = 140u; power = 250u; distance = 1000.0 })
+        }
+
+        // The first definition record starts right after the 14-byte header.
+        assertEquals(Endianness.BIG.value, bytes[14 + 2].toUByte())
+
+        val result = FitDecoder(bytes).decode()
+        assertTrue(result.isSuccess, "unexpected errors: ${result.errors}")
+        assertTrue(FitDecoder(bytes).checkIntegrity())
+
+        val fileIdMesg = result.messages.fileIdMesgs.single()
+        assertEquals(Manufacturer.GARMIN, fileIdMesg.manufacturer)
+        assertEquals(1234u, fileIdMesg.serialNumber)
+
+        val record = result.messages.recordMesgs.single()
+        assertEquals(140u.toUByte(), record.heartRate)
+        assertEquals(250u.toUShort(), record.power)
+        assertEquals(1000.0, record.distance)
+    }
+
+    /** The two architectures differ in bytes but not in what they mean. */
+    @Test
+    fun bigAndLittleEndianEncodingsDecodeIdentically() {
+        fun build(endianness: Endianness) = encodeFit(endianness) {
+            write(fileId())
+            write(RecordMesg().apply { power = 0x1234u; heartRate = 60u })
+        }
+
+        val little = build(Endianness.LITTLE)
+        val big = build(Endianness.BIG)
+
+        assertEquals(little.size, big.size)
+        assertFalse(little.contentEquals(big))
+
+        val fromLittle = FitDecoder(little).decode().messages.recordMesgs.single()
+        val fromBig = FitDecoder(big).decode().messages.recordMesgs.single()
+        assertEquals(0x1234u.toUShort(), fromLittle.power)
+        assertEquals(fromLittle.power, fromBig.power)
+        assertEquals(fromLittle.heartRate, fromBig.heartRate)
+    }
+
+    /**
+     * A definition written explicitly keeps its architecture, and a later message
+     * of the same shape under a different one gets its own definition record
+     * rather than silently being read under the wrong architecture.
+     */
+    @Test
+    fun anExplicitBigEndianDefinitionIsNotReusedByALittleEndianMessage() {
+        val encoder = FitEncoder()
+        val record = RecordMesg().apply { power = 0x1234u }
+
+        encoder.write(MesgDefinition.of(record, localMesgNum = 0u, endianness = Endianness.BIG))
+        encoder.write(fileId())
+        encoder.write(record)
+        val bytes = encoder.close()
+
+        val result = FitDecoder(bytes).decode()
+        assertTrue(result.isSuccess, "unexpected errors: ${result.errors}")
+        assertEquals(0x1234u.toUShort(), result.messages.recordMesgs.single().power)
     }
 
     /** Two encoders given the same messages must produce the same bytes. */
