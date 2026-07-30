@@ -25,6 +25,8 @@ public open class ConnectivityMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** bluetooth_enabled. Use Bluetooth for connectivity features */
     public var bluetoothEnabled: Boolean?
         get() = (getFieldValue(BLUETOOTH_ENABLED_FIELD_NUM) as? UByte)?.let { it.toInt() != 0 }

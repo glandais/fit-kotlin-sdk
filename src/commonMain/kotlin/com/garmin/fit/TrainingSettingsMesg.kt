@@ -25,6 +25,8 @@ public open class TrainingSettingsMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** target_distance, in m. */
     public var targetDistance: Double?
         get() = getFieldValue(TARGET_DISTANCE_FIELD_NUM) as? Double

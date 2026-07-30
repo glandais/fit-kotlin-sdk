@@ -27,6 +27,8 @@ public open class ChronoShotDataMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** timestamp. */
     public var timestamp: Instant?
         get() = (getFieldValue(TIMESTAMP_FIELD_NUM) as? UInt)?.let { FitDateTime.toInstant(it) }

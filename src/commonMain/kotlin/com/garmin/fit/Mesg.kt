@@ -52,6 +52,34 @@ public open class Mesg(
         }
     }
 
+    /**
+     * Adoption constructor: takes over [other]'s fields without copying them.
+     *
+     * Internal, and only for a caller that owns [other] outright and discards
+     * it afterwards — the decoder, which builds a fresh [Mesg] per record and
+     * hands it to [Factory.typed]. Sharing the fields there is safe precisely
+     * because nothing else ever saw them; anywhere else, use the copy
+     * constructor. [adopt] only distinguishes this signature from the copy
+     * constructor's.
+     */
+    internal constructor(other: Mesg, @Suppress("UNUSED_PARAMETER") adopt: Boolean) :
+        this(other.mesgName, other.globalMesgNum) {
+        localMesgNum = other.localMesgNum
+        decoderMesgIndex = other.decoderMesgIndex
+        fieldMap.putAll(other.fieldMap)
+        developerFieldMap.putAll(other.developerFieldMap)
+    }
+
+    /**
+     * Removes fields left with no values, in place. What the copy constructor
+     * does by omission, for the adoption path: a field whose every value was
+     * the invalid sentinel stops being "present".
+     */
+    internal fun dropEmptyFields() {
+        fieldMap.entries.removeAll { !it.value.hasValues }
+        developerFieldMap.entries.removeAll { !it.value.hasValues }
+    }
+
     public val fieldList: List<Field> get() = fieldMap.values.toList()
 
     public val developerFieldList: List<DeveloperField> get() = developerFieldMap.values.toList()
@@ -259,6 +287,21 @@ public open class Mesg(
             var raw = bitStream.readBits(component.bits, signed)
 
             if (component.accumulate) {
+                // An all-ones component is the wire's invalid sentinel: it
+                // carries no sample, so it must not feed the running total —
+                // fed in, the next real sample's delta would be computed
+                // against the sentinel rather than the last real sample.
+                // fit-python-sdk folds it in before testing invalidity; that
+                // corruption is deliberately not reproduced here.
+                val mask = if (component.bits >= 64) -1L else (1L shl component.bits) - 1L
+                if (raw and mask == mask) {
+                    val key = component.fieldNum.toInt()
+                    if (expandedSoFar.add(key)) destination.clearValues()
+                    destination.isExpandedField = true
+                    destination.addRawValue(null)
+                    fieldMap[key] = destination
+                    continue
+                }
                 raw = accumulator.accumulate(globalMesgNum, component.fieldNum, raw, component.bits)
             }
 

@@ -27,6 +27,8 @@ public open class FieldDescriptionMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** developer_data_index. */
     public var developerDataIndex: UByte?
         get() = getFieldValue(DEVELOPER_DATA_INDEX_FIELD_NUM) as? UByte

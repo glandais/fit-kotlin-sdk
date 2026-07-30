@@ -187,12 +187,13 @@ internal class MesgCursor(
 
         registerDeclarations(mesg)
 
-        // The copy drops any field left with no values, which is how a field
-        // whose every value was the invalid sentinel stops being "present".
-        val result = Factory.typed(Mesg(mesg))
-
         if (!known && !options.includeUnknownData) return null
-        return result
+
+        // A field whose every value was the invalid sentinel stops being
+        // "present". typed() then adopts the fields rather than copying them:
+        // this mesg was built for this record and nothing else holds it.
+        mesg.dropEmptyFields()
+        return Factory.typed(mesg)
     }
 
     /**

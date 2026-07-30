@@ -25,6 +25,8 @@ public open class AntChannelIdMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** channel_number. */
     public var channelNumber: UByte?
         get() = getFieldValue(CHANNEL_NUMBER_FIELD_NUM) as? UByte

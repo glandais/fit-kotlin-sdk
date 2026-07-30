@@ -25,6 +25,8 @@ public open class ZonesTargetMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** max_heart_rate. */
     public var maxHeartRate: UByte?
         get() = getFieldValue(MAX_HEART_RATE_FIELD_NUM) as? UByte

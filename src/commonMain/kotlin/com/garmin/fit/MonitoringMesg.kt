@@ -25,6 +25,8 @@ public open class MonitoringMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** timestamp, in s. Must align to logging interval, for example, time must be 00:00:00 for daily log. */
     public var timestamp: Instant?
         get() = (getFieldValue(TIMESTAMP_FIELD_NUM) as? UInt)?.let { FitDateTime.toInstant(it) }

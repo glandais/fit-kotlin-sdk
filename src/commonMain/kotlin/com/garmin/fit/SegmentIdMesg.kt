@@ -27,6 +27,8 @@ public open class SegmentIdMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** name. Friendly name assigned to segment */
     public var name: String?
         get() = getFieldValue(NAME_FIELD_NUM) as? String

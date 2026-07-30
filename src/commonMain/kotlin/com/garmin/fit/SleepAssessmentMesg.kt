@@ -25,6 +25,8 @@ public open class SleepAssessmentMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** combined_awake_score. Average of awake_time_score and awakenings_count_score. If valid: 0 (worst) to 100 (best). If unknown: FIT_UINT8_INVALID. */
     public var combinedAwakeScore: UByte?
         get() = getFieldValue(COMBINED_AWAKE_SCORE_FIELD_NUM) as? UByte

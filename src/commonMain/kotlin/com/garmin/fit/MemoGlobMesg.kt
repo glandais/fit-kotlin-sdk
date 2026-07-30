@@ -25,6 +25,8 @@ public open class MemoGlobMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** part_index. Sequence number of memo blocks */
     public var partIndex: UInt?
         get() = getFieldValue(PART_INDEX_FIELD_NUM) as? UInt

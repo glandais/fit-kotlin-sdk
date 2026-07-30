@@ -27,6 +27,8 @@ public open class DeveloperDataIdMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** Number of values stored in developer_id. */
     public val numDeveloperId: Int
         get() = getField(DEVELOPER_ID_FIELD_NUM)?.numValues ?: 0

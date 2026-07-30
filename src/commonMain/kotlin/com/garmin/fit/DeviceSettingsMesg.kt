@@ -25,6 +25,8 @@ public open class DeviceSettingsMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** active_time_zone. Index into time zone arrays. */
     public var activeTimeZone: UByte?
         get() = getFieldValue(ACTIVE_TIME_ZONE_FIELD_NUM) as? UByte

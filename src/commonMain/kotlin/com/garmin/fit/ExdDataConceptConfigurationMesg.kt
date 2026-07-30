@@ -25,6 +25,8 @@ public open class ExdDataConceptConfigurationMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** screen_index. */
     public var screenIndex: UByte?
         get() = getFieldValue(SCREEN_INDEX_FIELD_NUM) as? UByte

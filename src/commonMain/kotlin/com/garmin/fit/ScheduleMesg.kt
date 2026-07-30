@@ -25,6 +25,8 @@ public open class ScheduleMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** manufacturer. Corresponds to file_id of scheduled workout / course. */
     public var manufacturer: Manufacturer?
         get() = (getFieldValue(MANUFACTURER_FIELD_NUM) as? UShort)?.let { Manufacturer.fromValue(it) }

@@ -25,6 +25,8 @@ public open class DiveApneaAlarmMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** message_index. Index of the alarm */
     public var messageIndex: UShort?
         get() = getFieldValue(MESSAGE_INDEX_FIELD_NUM) as? UShort

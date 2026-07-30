@@ -25,6 +25,8 @@ public open class WeatherConditionsMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** timestamp. time of update for current conditions, else forecast time */
     public var timestamp: Instant?
         get() = (getFieldValue(TIMESTAMP_FIELD_NUM) as? UInt)?.let { FitDateTime.toInstant(it) }

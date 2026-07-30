@@ -25,6 +25,8 @@ public open class VideoClipMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** clip_number. */
     public var clipNumber: UShort?
         get() = getFieldValue(CLIP_NUMBER_FIELD_NUM) as? UShort

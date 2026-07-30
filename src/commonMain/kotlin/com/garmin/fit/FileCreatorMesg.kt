@@ -25,6 +25,8 @@ public open class FileCreatorMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** software_version. */
     public var softwareVersion: UShort?
         get() = getFieldValue(SOFTWARE_VERSION_FIELD_NUM) as? UShort

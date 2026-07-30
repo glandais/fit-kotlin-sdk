@@ -27,6 +27,8 @@ public open class HrvMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** Number of values stored in time. */
     public val numTime: Int
         get() = getField(TIME_FIELD_NUM)?.numValues ?: 0

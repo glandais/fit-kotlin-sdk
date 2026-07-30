@@ -25,6 +25,8 @@ public open class SportMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** sport. */
     public var sport: Sport?
         get() = (getFieldValue(SPORT_FIELD_NUM) as? UByte)?.let { Sport.fromValue(it) }

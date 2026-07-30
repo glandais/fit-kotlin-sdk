@@ -27,6 +27,8 @@ public open class FileIdMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** type. */
     public var type: File?
         get() = (getFieldValue(TYPE_FIELD_NUM) as? UByte)?.let { File.fromValue(it) }

@@ -25,6 +25,8 @@ public open class VideoMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** url. */
     public var url: String?
         get() = getFieldValue(URL_FIELD_NUM) as? String

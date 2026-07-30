@@ -25,6 +25,8 @@ public open class MaxMetDataMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** update_time. Time maxMET and vo2 were calculated */
     public var updateTime: Instant?
         get() = (getFieldValue(UPDATE_TIME_FIELD_NUM) as? UInt)?.let { FitDateTime.toInstant(it) }

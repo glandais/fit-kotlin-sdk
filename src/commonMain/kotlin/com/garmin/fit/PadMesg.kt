@@ -25,6 +25,8 @@ public open class PadMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     public companion object {
 
         /**

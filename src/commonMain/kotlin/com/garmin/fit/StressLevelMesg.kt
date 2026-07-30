@@ -27,6 +27,8 @@ public open class StressLevelMesg : Mesg {
 
     public constructor(mesg: Mesg) : super(mesg)
 
+    internal constructor(mesg: Mesg, adopt: Boolean) : super(mesg, adopt)
+
     /** stress_level_value. */
     public var stressLevelValue: Short?
         get() = getFieldValue(STRESS_LEVEL_VALUE_FIELD_NUM) as? Short
