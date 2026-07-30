@@ -44,11 +44,48 @@ kotlin {
         compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11) }
     }
 
-    // All the code is in commonMain with no expect/actual and no java.* API, so these cost
-    // nothing but a target declaration. vcyclist consumes the klibs from commonMain.
+    // The SDK proper is all in commonMain with no expect/actual and no java.* API, so the
+    // targets below cost nothing but a declaration. vcyclist consumes the klibs from
+    // commonMain.
+    //
+    // `js` carries one extra source set, `jsMain`, holding the @JsExport surface that turns
+    // the Kotlin API into an idiomatic JS/TS one (plain objects rather than Kotlin classes)
+    // and the browser demo's static files. See src/jsMain/kotlin/FitJs.kt.
     js(IR) {
         nodejs()
-        browser()
+        browser {
+            commonWebpackConfig {
+                // The demo page loads this exact name; keep the two in step.
+                outputFileName = "fit-kotlin-sdk.js"
+            }
+        }
+
+        // Two distinct outputs from one source set:
+        //   executable() -> build/dist/js/productionExecutable, a webpack bundle plus the
+        //                   jsMain/resources demo, which is what GitHub Pages serves;
+        //   library()    -> build/dist/js/productionLibrary, an npm package with .d.ts files.
+        binaries.executable()
+        binaries.library()
+        generateTypeScriptDefinitions()
+
+        compilations.named("main") {
+            packageJson {
+                customField("name", "@glandais/fit-kotlin-sdk")
+                customField("publishConfig", mapOf("access" to "public"))
+                customField(
+                    "description",
+                    "Garmin FIT protocol decoder and encoder, generated from the FIT profile",
+                )
+                customField("license", "FIT Protocol License Agreement")
+                customField(
+                    "repository",
+                    mapOf(
+                        "type" to "git",
+                        "url" to "https://github.com/glandais/fit-kotlin-sdk.git",
+                    ),
+                )
+            }
+        }
     }
 
     @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
@@ -114,4 +151,44 @@ mavenPublishing {
             developerConnection.set("scm:git:git@github.com:glandais/fit-kotlin-sdk.git")
         }
     }
+}
+
+// ------------------------------------------------------------------ npm and GitHub Pages
+
+// The npm package ships the same README as Maven Central and the repository front page.
+val copyReadmeToJsPackage =
+    tasks.register<Copy>("copyReadmeToJsPackage") {
+        from(layout.projectDirectory.file("README.md"))
+        into(layout.buildDirectory.dir("dist/js/productionLibrary"))
+    }
+
+tasks.register<Exec>("npmPublishJs") {
+    group = "publishing"
+    description = "Publish the Kotlin/JS library to npm as @glandais/fit-kotlin-sdk"
+    dependsOn("jsBrowserProductionLibraryDistribution", copyReadmeToJsPackage)
+    workingDir =
+        layout.buildDirectory
+            .dir("dist/js/productionLibrary")
+            .get()
+            .asFile
+    commandLine("npm", "publish", "--access", "public")
+}
+
+// The demo, ready to be uploaded as a GitHub Pages artifact: the webpack bundle from
+// binaries.executable() plus everything in src/jsMain/resources.
+tasks.register("demo") {
+    group = "build"
+    description = "Build the browser demo into build/dist/js/productionExecutable"
+    dependsOn("jsBrowserDistribution")
+}
+
+// Gradle 9 validates that no task reads a directory another task writes without an
+// ordering between them, and `binaries.executable()` and `binaries.library()` share
+// build/dist/js. Declaring the order is enough; the outputs themselves do not overlap.
+tasks.matching { it.name == "jsBrowserProductionWebpack" }.configureEach {
+    mustRunAfter("jsProductionLibraryCompileSync")
+}
+
+tasks.matching { it.name.endsWith("ProductionLibraryDistribution") }.configureEach {
+    mustRunAfter("jsProductionExecutableCompileSync")
 }

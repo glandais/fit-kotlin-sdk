@@ -1,0 +1,444 @@
+/*
+    Styles for the fit-kotlin-sdk browser demo. Hand-written, local to this repository.
+    No web fonts and no CDN: the page is a static artefact served from GitHub Pages and
+    must work offline, from a file:// URL, and behind a strict CSP.
+*/
+
+:root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --ink: #16191d;
+    --ink-soft: #5b6570;
+    --line: #e2e6ea;
+    --accent: #0b6bcb;
+    --accent-ink: #ffffff;
+    --danger: #b3261e;
+    --danger-bg: #fdecea;
+    --chart-1: #0b6bcb;
+    --chart-2: #1f9d55;
+    --chart-3: #c2410c;
+    --chart-4: #7c3aed;
+    --chart-5: #0891b2;
+    --radius: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #0f1216;
+        --panel: #171b21;
+        --ink: #e8ecf1;
+        --ink-soft: #9aa4b0;
+        --line: #262c35;
+        --accent: #58a6ff;
+        --accent-ink: #08111d;
+        --danger: #ff8a80;
+        --danger-bg: #2a1614;
+        --chart-1: #58a6ff;
+        --chart-2: #3fb950;
+        --chart-3: #ff8c42;
+        --chart-4: #bc8cff;
+        --chart-5: #2dd4bf;
+    }
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.92em;
+}
+
+a {
+    color: var(--accent);
+}
+
+/* ------------------------------------------------------------------ topbar */
+
+.topbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+}
+
+.brand {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+}
+
+.logo {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.topbar h1 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.tagline {
+    margin: 2px 0 0;
+    color: var(--ink-soft);
+    font-size: 13px;
+}
+
+.topbar-meta {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.pill {
+    padding: 5px 11px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--ink-soft);
+    font-size: 12.5px;
+    text-decoration: none;
+}
+
+.pill.link:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+main {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* ---------------------------------------------------------------- dropzone */
+
+.dropzone {
+    padding: 34px 20px;
+    border: 2px dashed var(--line);
+    border-radius: var(--radius);
+    background: var(--panel);
+    text-align: center;
+    transition:
+        border-color 0.15s ease,
+        background 0.15s ease;
+}
+
+.dropzone.dragover {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+}
+
+.dropzone-title {
+    margin: 0 0 14px;
+    font-size: 17px;
+}
+
+.dropzone-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+button {
+    font: inherit;
+    padding: 9px 16px;
+    border-radius: 9px;
+    border: 1px solid var(--line);
+    cursor: pointer;
+    background: var(--panel);
+    color: var(--ink);
+}
+
+button:hover:not(:disabled) {
+    border-color: var(--accent);
+}
+
+button:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+}
+
+.status {
+    margin: 14px 0 0;
+    min-height: 1.5em;
+    color: var(--ink-soft);
+    font-size: 13.5px;
+}
+
+.status.error {
+    color: var(--danger);
+}
+
+/* ------------------------------------------------------------------- cards */
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 12px;
+}
+
+.card {
+    padding: 12px 14px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+}
+
+.card-label {
+    color: var(--ink-soft);
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.card-value {
+    margin-top: 4px;
+    font-size: 19px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------ panels */
+
+.panels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 20px;
+}
+
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px;
+}
+
+.panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.panel-head h2 {
+    margin: 0;
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-soft);
+}
+
+.panel-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.checkbox {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    color: var(--ink-soft);
+    font-size: 13px;
+}
+
+.note {
+    color: var(--ink-soft);
+    font-size: 12.5px;
+    margin: 0 0 8px;
+}
+
+.canvas-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+}
+
+canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.toggle {
+    padding: 4px 10px;
+    font-size: 12.5px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink-soft);
+}
+
+.toggle.on {
+    color: var(--ink);
+    border-color: currentColor;
+}
+
+.toggle .swatch {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    background: currentColor;
+}
+
+/* ----------------------------------------------------------------- errors */
+
+.errors {
+    padding: 12px 16px;
+    background: var(--danger-bg);
+    border: 1px solid var(--danger);
+    border-radius: var(--radius);
+    color: var(--danger);
+    font-size: 13.5px;
+}
+
+.errors ul {
+    margin: 6px 0 0;
+    padding-left: 18px;
+}
+
+/* --------------------------------------------------------------- messages */
+
+.messages {
+    display: grid;
+    grid-template-columns: minmax(190px, 240px) 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 720px) {
+    .messages {
+        grid-template-columns: 1fr;
+    }
+}
+
+.mesg-types {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 420px;
+    overflow-y: auto;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+}
+
+.mesg-types li button {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    background: transparent;
+    padding: 8px 12px;
+    font-size: 13.5px;
+    text-align: left;
+}
+
+.mesg-types li:last-child button {
+    border-bottom: 0;
+}
+
+.mesg-types li button.on {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.mesg-types .count {
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+}
+
+.table-scroll {
+    overflow: auto;
+    max-height: 420px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 13px;
+}
+
+th,
+td {
+    padding: 6px 10px;
+    text-align: left;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--line);
+}
+
+thead th {
+    position: sticky;
+    top: 0;
+    background: var(--panel);
+    z-index: 1;
+}
+
+th .units {
+    display: block;
+    font-weight: 400;
+    font-size: 11px;
+    color: var(--ink-soft);
+}
+
+tbody tr:hover td {
+    background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------ footer */
+
+.footer {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 8px 24px 32px;
+    color: var(--ink-soft);
+    font-size: 12.5px;
+}

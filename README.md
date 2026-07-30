@@ -2,7 +2,8 @@
 
 Reads and writes Garmin FIT files. Profile 21.205.0-Release.
 
-> **Everything under `src/` is machine-generated.**
+> **Everything under `src/` is machine-generated**, with one exception:
+> `src/jsMain/resources`, the browser demo, is hand-written and local to this repository.
 
 ## Requirements
 
@@ -10,9 +11,10 @@ Reads and writes Garmin FIT files. Profile 21.205.0-Release.
   not run on JDK 25 at all, so on that combination set
   `JAVA_HOME=/path/to/jdk21`.
 - Targets: `jvm`, `js` and `wasmJs` (both node and browser), and `wasmWasi`.
-  All the code is in `commonMain` with no `expect`/`actual` and no `java.*`
-  APIs, so adding a native target to `build.gradle.kts` needs no source
-  changes.
+  The SDK itself is all in `commonMain` with no `expect`/`actual` and no
+  `java.*` APIs, so adding a native target to `build.gradle.kts` needs no
+  source changes. `jsMain` holds the JavaScript/TypeScript surface only — see
+  [JavaScript and TypeScript](#javascript-and-typescript).
 
 On the `js` target — not the Wasm ones, which have real types — `Byte`,
 `Short`, `Int`, `Float` and `Double` are the same runtime type, a JS number.
@@ -129,11 +131,99 @@ pair for you. `DeveloperFieldDescription.createField()` then makes a field to
 `setDeveloperField` on a message; re-registering the descriptions a decode
 returned re-encodes the same extension fields.
 
+## JavaScript and TypeScript
+
+The `js` target carries one source set the other targets do not, `jsMain`, whose whole job
+is to turn the Kotlin API into an idiomatic JavaScript one: plain objects instead of Kotlin
+classes, `Date`s instead of FIT timestamps, `"cycling"` instead of `2`. It is published to
+npm as [`@glandais/fit-kotlin-sdk`](https://www.npmjs.com/package/@glandais/fit-kotlin-sdk)
+with TypeScript definitions, and the exported names are flat — the source set has no
+`package`, precisely so that consumers write `decodeFit` and not `com.garmin.fit.decodeFit`.
+
+```js
+import { decodeFit, isFitFile, fitFieldInfo, fitProfileVersion } from '@glandais/fit-kotlin-sdk'
+
+const bytes = new Int8Array(await file.arrayBuffer())
+if (!isFitFile(bytes)) throw new Error('not a FIT file')
+
+const result = decodeFit(bytes)                    // never throws; see result.errors
+for (const record of result.messages.recordMesgs ?? []) {
+    console.log(record.fields.timestamp, record.fields.heartRate, record.fields.positionLat)
+}
+```
+
+`decodeFit` returns
+
+```ts
+{
+    profileVersion: number | null,
+    errors: { message: string, bytePosition: number }[],
+    messages: Record<string, FitMessage[]>,   // { recordMesgs: [...], sessionMesgs: [...] }
+    mesgs: FitMessage[],                      // the same objects, in file order
+}
+
+// FitMessage: { name, num, index, fields: Record<string, any>, developerFields: Record<string, any> }
+```
+
+which is the shape `@garmin/fitsdk` produces, so code written against the official
+JavaScript SDK ports across with little more than a rename. Options, all optional:
+
+```js
+decodeFit(bytes, {
+    mode: 'normal',            // or 'skipHeader', 'dataOnly'
+    expandComponents: true,    // unpack bit-packed fields
+    includeUnknownData: false, // keep messages absent from the profile
+    mergeHeartRates: true,     // fold `hr` messages into `record`s
+    applyTypes: true,          // enum values as names, date_time as Date, bool as boolean
+})
+```
+
+`applyTypes` is the one knob with no Kotlin equivalent: the Kotlin API returns
+`Sport.CYCLING` from a generated accessor, and JavaScript has no such accessors, so the
+profile's names are resolved during the decode instead. Turn it off to see exactly what
+the file stores.
+
+Writing works the same way round — names or numbers, `Date`s or FIT seconds:
+
+```js
+import { encodeFit } from '@glandais/fit-kotlin-sdk'
+
+const bytes = encodeFit([
+    { name: 'fileId', fields: { type: 'activity', manufacturer: 'garmin', timeCreated: new Date() } },
+    { name: 'record', fields: { timestamp: new Date(), heartRate: 140, cadence: 90 } },
+])
+```
+
+`fitFieldInfo('record', 'heartRate')` reports what the profile says about a field — number,
+units, scale, offset, base type, profile type — which is enough to label a table without a
+lookup table of your own.
+
+One limit worth stating: a `uint64` beyond 2^53 arrives rounded, because a JavaScript
+number has 53 bits of mantissa. Only the FIT `*_64` types and a few device serial fields
+reach that far.
+
+### Browser demo
+
+`src/jsMain/resources` holds a decoder demo — drop a `.fit` file in, get a summary, the
+track, the series, and every message in a table. Unlike `src/`, it is **not** generated,
+so it is the one place in this repository that can be edited by hand.
+
+```sh
+gradle demo          # -> build/dist/js/productionExecutable
+```
+
+Serve that directory over HTTP (`python3 -m http.server`) — `file://` will not do, the
+sample activity is fetched. It is published to GitHub Pages on every push to `develop` by
+`.github/workflows/gh-pages.yml`:
+<https://glandais.github.io/fit-kotlin-sdk/>.
+
 ## Build and test
 
 ```sh
 gradle build
-gradle jvmTest
+gradle jvmTest      # 198 tests on the JVM
+gradle jsNodeTest   # the same tests plus the JS surface, on Node
+gradle demo         # the browser demo, into build/dist/js/productionExecutable
 ```
 
 ## Reference
