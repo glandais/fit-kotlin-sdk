@@ -11,7 +11,7 @@
 
 plugins {
     kotlin("multiplatform") version "2.4.10"
-    id("com.vanniktech.maven.publish") version "0.35.0"
+    id("com.vanniktech.maven.publish") version "0.37.0"
 }
 
 // Not com.garmin: Maven Central verifies namespace ownership, and that one
