@@ -12,6 +12,8 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -207,6 +209,135 @@ class FieldTests {
         val absent = Field("applicationId", 1u, BaseType.BYTE)
         absent.read(ByteReader(TestData.bytes(0xFF, 0xFF)), 2)
         assertFalse(absent.hasValues)
+    }
+
+    /**
+     * A string field of nothing but NULs is the string type's invalid sentinel,
+     * and has to be dropped exactly as an all-0xFF numeric field is. Keeping it
+     * would make `hasField` true for a name the producer never wrote, which is
+     * neither what the Python nor the JavaScript SDK reports.
+     */
+    @Test
+    fun aStringFieldOfNothingButNulsIsDroppedOnRead() {
+        val field = Field("productName", 8u, BaseType.STRING)
+        field.read(ByteReader(TestData.bytes(0x00, 0x00, 0x00, 0x00)), 4)
+        assertFalse(field.hasValues)
+        assertEquals(0, field.numValues)
+    }
+
+    /** One empty string among several real ones is a hole, not an absent field. */
+    @Test
+    fun aStringFieldWithOneEmptyEntryIsKeptWhole() {
+        val field = Field("names", 4u, BaseType.STRING)
+        field.read(ByteReader(TestData.bytes(0x00, 0x61, 0x00, 0x00)), 4)
+
+        assertEquals(2, field.numValues)
+        assertNull(field.getValue(0))
+        assertEquals("a", field.getValue(1))
+    }
+
+    /**
+     * A subfield can be narrower than the field carrying it: `event.data` is a
+     * uint32 whose `CoursePointIndex` subfield is a uint16. Storage stays the
+     * field's own width — that is what the field definition declares and what
+     * gets written — but a value the subfield cannot express is stored as the
+     * invalid sentinel rather than as a number that reads back as null.
+     */
+    @Test
+    fun aValueTooLargeForTheActiveSubfieldIsStoredAsInvalid() {
+        val data = Factory.createField(Profile.MesgNum.EVENT, EventMesg.DATA_FIELD_NUM)
+        assertNotNull(data)
+        assertEquals(BaseType.UINT32, data.baseType)
+
+        data.setValue(70000, 0, SubFieldSelector.Named("CoursePointIndex"))
+
+        assertEquals(4, data.size, "the wire width follows the field, not the subfield")
+        assertEquals(UInt.MAX_VALUE, data.getRawValue())
+        assertNull(data.getValue(0, SubFieldSelector.Named("CoursePointIndex")))
+    }
+
+    /** In range, the value goes in and comes back out through the subfield unchanged. */
+    @Test
+    fun aValueWithinTheActiveSubfieldRangeRoundTrips() {
+        val data = Factory.createField(Profile.MesgNum.EVENT, EventMesg.DATA_FIELD_NUM)
+        assertNotNull(data)
+
+        data.setValue(1234, 0, SubFieldSelector.Named("CoursePointIndex"))
+
+        assertEquals(4, data.size)
+        assertEquals(1234u, data.getRawValue())
+        assertEquals(1234u, data.getValue(0, SubFieldSelector.Named("CoursePointIndex")))
+    }
+
+    /** Without a subfield the field's own range is the only one that applies. */
+    @Test
+    fun theFieldsOwnRangeStillAppliesWhenNoSubfieldIsSelected() {
+        val data = Factory.createField(Profile.MesgNum.EVENT, EventMesg.DATA_FIELD_NUM)
+        assertNotNull(data)
+
+        data.setValue(70000)
+        assertEquals(70000u, data.getRawValue())
+        assertEquals(70000u, data.getValue())
+    }
+
+    /**
+     * Field 0 of a message and developer field 0 of the same message are
+     * different things, whatever they hold. Equality that cannot tell them apart
+     * would let one stand in for the other in any set or list lookup.
+     */
+    @Test
+    fun aProfileFieldNeverEqualsADeveloperFieldOfTheSameNumber() {
+        val profileField = Field("doughnuts_earned", 0u, BaseType.UINT8).also { it.setValue(80u) }
+        val developerField = DeveloperField(
+            fieldName = "doughnuts_earned",
+            fieldNum = 0u,
+            baseType = BaseType.UINT8,
+            developerDataIndex = 0u,
+        ).also { it.setValue(80u) }
+
+        assertNotEquals<FieldBase>(profileField, developerField)
+        assertNotEquals<FieldBase>(developerField, profileField)
+        assertFalse(listOf<FieldBase>(profileField).contains(developerField))
+    }
+
+    /** Two applications can declare the same field number; only the UUID separates them. */
+    @Test
+    fun twoDeveloperFieldsFromDifferentApplicationsAreNotEqual() {
+        fun field(uuidByte: Byte) = DeveloperField(
+            fieldName = "doughnuts_earned",
+            fieldNum = 0u,
+            baseType = BaseType.UINT8,
+            developerDataIndex = 0u,
+            applicationId = ByteArray(16) { uuidByte },
+        ).also { it.setValue(80u) }
+
+        assertNotEquals(field(1), field(2))
+        assertEquals(field(1), field(1))
+    }
+
+    /**
+     * The application UUID is this field's identity, so handing out the array
+     * itself would let any caller rewrite which application the field belongs to.
+     */
+    @Test
+    fun theApplicationIdIsCopiedOnTheWayInAndOnTheWayOut() {
+        val uuid = ByteArray(16) { 1 }
+        val field = DeveloperField(
+            fieldName = "doughnuts_earned",
+            fieldNum = 0u,
+            baseType = BaseType.UINT8,
+            developerDataIndex = 0u,
+            applicationId = uuid,
+        )
+
+        // Rewriting the array that was passed in changes nothing.
+        uuid[0] = 0x7F
+        assertEquals(0x01.toByte(), field.applicationId!![0])
+
+        // Nor does rewriting what the getter handed back.
+        field.applicationId!![0] = 0x7F
+        assertEquals(0x01.toByte(), field.applicationId!![0])
+        assertEquals(List(16) { 1.toByte() }, field.key.applicationId)
     }
 
     @Test

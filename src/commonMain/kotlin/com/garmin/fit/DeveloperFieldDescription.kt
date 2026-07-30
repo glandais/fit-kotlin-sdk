@@ -20,7 +20,7 @@ package com.garmin.fit
  * them with an encoder to re-emit the same extension fields.
  */
 public class DeveloperFieldDescription(
-    public val applicationId: ByteArray?,
+    applicationId: ByteArray?,
     public val applicationVersion: UInt?,
     public val developerDataIndex: UByte,
     public val fieldDefinitionNumber: UByte,
@@ -31,8 +31,16 @@ public class DeveloperFieldDescription(
     public val offset: Double = Fit.FIELD_DEFAULT_OFFSET,
     public val nativeFieldNum: UByte? = null,
 ) {
+    // Copied in and copied out, like DeveloperField's: a declaration whose
+    // application UUID a caller can rewrite is a declaration that can be made to
+    // describe someone else's field.
+    private val applicationIdBytes: ByteArray? = applicationId?.copyOf()
+
+    /** Application UUID of the `developer_data_id` that claimed the index. */
+    public val applicationId: ByteArray? get() = applicationIdBytes?.copyOf()
+
     public val key: DeveloperDataKey
-        get() = DeveloperDataKey(applicationId?.toList(), developerDataIndex, fieldDefinitionNumber)
+        get() = DeveloperDataKey(applicationIdBytes?.toList(), developerDataIndex, fieldDefinitionNumber)
 
     /** A fresh, empty field this description describes. */
     public fun createField(): DeveloperField =

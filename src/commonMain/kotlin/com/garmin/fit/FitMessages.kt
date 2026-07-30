@@ -16,396 +16,780 @@ package com.garmin.fit
  *
  * Every list is in file order. A message the profile does not know goes into
  * [unknownMesgs] rather than being dropped, so nothing decoded is lost.
+ *
+ * The lists are handed out as read-only [List]s over private mutable storage:
+ * only the decoder fills them, and a caller that wants to add to or reorder one
+ * copies it first. (Kotlin's `List` is a read-only view, not a frozen
+ * collection, so a caller determined to cast one back to `MutableList` still
+ * can — but nothing in the API invites it.)
  */
 public class FitMessages internal constructor() {
-    public val fileIdMesgs: MutableList<FileIdMesg> = mutableListOf()
-    public val fileCreatorMesgs: MutableList<FileCreatorMesg> = mutableListOf()
-    public val timestampCorrelationMesgs: MutableList<TimestampCorrelationMesg> = mutableListOf()
-    public val softwareMesgs: MutableList<SoftwareMesg> = mutableListOf()
-    public val slaveDeviceMesgs: MutableList<SlaveDeviceMesg> = mutableListOf()
-    public val capabilitiesMesgs: MutableList<CapabilitiesMesg> = mutableListOf()
-    public val fileCapabilitiesMesgs: MutableList<FileCapabilitiesMesg> = mutableListOf()
-    public val mesgCapabilitiesMesgs: MutableList<MesgCapabilitiesMesg> = mutableListOf()
-    public val fieldCapabilitiesMesgs: MutableList<FieldCapabilitiesMesg> = mutableListOf()
-    public val deviceSettingsMesgs: MutableList<DeviceSettingsMesg> = mutableListOf()
-    public val userProfileMesgs: MutableList<UserProfileMesg> = mutableListOf()
-    public val hrmProfileMesgs: MutableList<HrmProfileMesg> = mutableListOf()
-    public val sdmProfileMesgs: MutableList<SdmProfileMesg> = mutableListOf()
-    public val bikeProfileMesgs: MutableList<BikeProfileMesg> = mutableListOf()
-    public val connectivityMesgs: MutableList<ConnectivityMesg> = mutableListOf()
-    public val watchfaceSettingsMesgs: MutableList<WatchfaceSettingsMesg> = mutableListOf()
-    public val ohrSettingsMesgs: MutableList<OhrSettingsMesg> = mutableListOf()
-    public val timeInZoneMesgs: MutableList<TimeInZoneMesg> = mutableListOf()
-    public val zonesTargetMesgs: MutableList<ZonesTargetMesg> = mutableListOf()
-    public val sportMesgs: MutableList<SportMesg> = mutableListOf()
-    public val hrZoneMesgs: MutableList<HrZoneMesg> = mutableListOf()
-    public val speedZoneMesgs: MutableList<SpeedZoneMesg> = mutableListOf()
-    public val cadenceZoneMesgs: MutableList<CadenceZoneMesg> = mutableListOf()
-    public val powerZoneMesgs: MutableList<PowerZoneMesg> = mutableListOf()
-    public val metZoneMesgs: MutableList<MetZoneMesg> = mutableListOf()
-    public val trainingSettingsMesgs: MutableList<TrainingSettingsMesg> = mutableListOf()
-    public val diveSettingsMesgs: MutableList<DiveSettingsMesg> = mutableListOf()
-    public val diveAlarmMesgs: MutableList<DiveAlarmMesg> = mutableListOf()
-    public val diveApneaAlarmMesgs: MutableList<DiveApneaAlarmMesg> = mutableListOf()
-    public val diveGasMesgs: MutableList<DiveGasMesg> = mutableListOf()
-    public val goalMesgs: MutableList<GoalMesg> = mutableListOf()
-    public val activityMesgs: MutableList<ActivityMesg> = mutableListOf()
-    public val sessionMesgs: MutableList<SessionMesg> = mutableListOf()
-    public val lapMesgs: MutableList<LapMesg> = mutableListOf()
-    public val lengthMesgs: MutableList<LengthMesg> = mutableListOf()
-    public val recordMesgs: MutableList<RecordMesg> = mutableListOf()
-    public val eventMesgs: MutableList<EventMesg> = mutableListOf()
-    public val deviceInfoMesgs: MutableList<DeviceInfoMesg> = mutableListOf()
-    public val deviceAuxBatteryInfoMesgs: MutableList<DeviceAuxBatteryInfoMesg> = mutableListOf()
-    public val trainingFileMesgs: MutableList<TrainingFileMesg> = mutableListOf()
-    public val weatherConditionsMesgs: MutableList<WeatherConditionsMesg> = mutableListOf()
-    public val weatherAlertMesgs: MutableList<WeatherAlertMesg> = mutableListOf()
-    public val gpsMetadataMesgs: MutableList<GpsMetadataMesg> = mutableListOf()
-    public val cameraEventMesgs: MutableList<CameraEventMesg> = mutableListOf()
-    public val gyroscopeDataMesgs: MutableList<GyroscopeDataMesg> = mutableListOf()
-    public val accelerometerDataMesgs: MutableList<AccelerometerDataMesg> = mutableListOf()
-    public val magnetometerDataMesgs: MutableList<MagnetometerDataMesg> = mutableListOf()
-    public val barometerDataMesgs: MutableList<BarometerDataMesg> = mutableListOf()
-    public val threeDSensorCalibrationMesgs: MutableList<ThreeDSensorCalibrationMesg> = mutableListOf()
-    public val oneDSensorCalibrationMesgs: MutableList<OneDSensorCalibrationMesg> = mutableListOf()
-    public val videoFrameMesgs: MutableList<VideoFrameMesg> = mutableListOf()
-    public val obdiiDataMesgs: MutableList<ObdiiDataMesg> = mutableListOf()
-    public val nmeaSentenceMesgs: MutableList<NmeaSentenceMesg> = mutableListOf()
-    public val aviationAttitudeMesgs: MutableList<AviationAttitudeMesg> = mutableListOf()
-    public val videoMesgs: MutableList<VideoMesg> = mutableListOf()
-    public val videoTitleMesgs: MutableList<VideoTitleMesg> = mutableListOf()
-    public val videoDescriptionMesgs: MutableList<VideoDescriptionMesg> = mutableListOf()
-    public val videoClipMesgs: MutableList<VideoClipMesg> = mutableListOf()
-    public val setMesgs: MutableList<SetMesg> = mutableListOf()
-    public val jumpMesgs: MutableList<JumpMesg> = mutableListOf()
-    public val splitMesgs: MutableList<SplitMesg> = mutableListOf()
-    public val splitSummaryMesgs: MutableList<SplitSummaryMesg> = mutableListOf()
-    public val climbProMesgs: MutableList<ClimbProMesg> = mutableListOf()
-    public val fieldDescriptionMesgs: MutableList<FieldDescriptionMesg> = mutableListOf()
-    public val developerDataIdMesgs: MutableList<DeveloperDataIdMesg> = mutableListOf()
-    public val courseMesgs: MutableList<CourseMesg> = mutableListOf()
-    public val coursePointMesgs: MutableList<CoursePointMesg> = mutableListOf()
-    public val segmentIdMesgs: MutableList<SegmentIdMesg> = mutableListOf()
-    public val segmentLeaderboardEntryMesgs: MutableList<SegmentLeaderboardEntryMesg> = mutableListOf()
-    public val segmentPointMesgs: MutableList<SegmentPointMesg> = mutableListOf()
-    public val segmentLapMesgs: MutableList<SegmentLapMesg> = mutableListOf()
-    public val segmentFileMesgs: MutableList<SegmentFileMesg> = mutableListOf()
-    public val workoutMesgs: MutableList<WorkoutMesg> = mutableListOf()
-    public val workoutSessionMesgs: MutableList<WorkoutSessionMesg> = mutableListOf()
-    public val workoutStepMesgs: MutableList<WorkoutStepMesg> = mutableListOf()
-    public val exerciseTitleMesgs: MutableList<ExerciseTitleMesg> = mutableListOf()
-    public val scheduleMesgs: MutableList<ScheduleMesg> = mutableListOf()
-    public val totalsMesgs: MutableList<TotalsMesg> = mutableListOf()
-    public val weightScaleMesgs: MutableList<WeightScaleMesg> = mutableListOf()
-    public val bloodPressureMesgs: MutableList<BloodPressureMesg> = mutableListOf()
-    public val monitoringInfoMesgs: MutableList<MonitoringInfoMesg> = mutableListOf()
-    public val monitoringMesgs: MutableList<MonitoringMesg> = mutableListOf()
-    public val monitoringHrDataMesgs: MutableList<MonitoringHrDataMesg> = mutableListOf()
-    public val spo2DataMesgs: MutableList<Spo2DataMesg> = mutableListOf()
-    public val hrMesgs: MutableList<HrMesg> = mutableListOf()
-    public val stressLevelMesgs: MutableList<StressLevelMesg> = mutableListOf()
-    public val maxMetDataMesgs: MutableList<MaxMetDataMesg> = mutableListOf()
-    public val hsaBodyBatteryDataMesgs: MutableList<HsaBodyBatteryDataMesg> = mutableListOf()
-    public val hsaEventMesgs: MutableList<HsaEventMesg> = mutableListOf()
-    public val hsaAccelerometerDataMesgs: MutableList<HsaAccelerometerDataMesg> = mutableListOf()
-    public val hsaGyroscopeDataMesgs: MutableList<HsaGyroscopeDataMesg> = mutableListOf()
-    public val hsaStepDataMesgs: MutableList<HsaStepDataMesg> = mutableListOf()
-    public val hsaSpo2DataMesgs: MutableList<HsaSpo2DataMesg> = mutableListOf()
-    public val hsaStressDataMesgs: MutableList<HsaStressDataMesg> = mutableListOf()
-    public val hsaRespirationDataMesgs: MutableList<HsaRespirationDataMesg> = mutableListOf()
-    public val hsaHeartRateDataMesgs: MutableList<HsaHeartRateDataMesg> = mutableListOf()
-    public val hsaConfigurationDataMesgs: MutableList<HsaConfigurationDataMesg> = mutableListOf()
-    public val hsaWristTemperatureDataMesgs: MutableList<HsaWristTemperatureDataMesg> = mutableListOf()
-    public val memoGlobMesgs: MutableList<MemoGlobMesg> = mutableListOf()
-    public val sleepLevelMesgs: MutableList<SleepLevelMesg> = mutableListOf()
-    public val antChannelIdMesgs: MutableList<AntChannelIdMesg> = mutableListOf()
-    public val antRxMesgs: MutableList<AntRxMesg> = mutableListOf()
-    public val antTxMesgs: MutableList<AntTxMesg> = mutableListOf()
-    public val exdScreenConfigurationMesgs: MutableList<ExdScreenConfigurationMesg> = mutableListOf()
-    public val exdDataFieldConfigurationMesgs: MutableList<ExdDataFieldConfigurationMesg> = mutableListOf()
-    public val exdDataConceptConfigurationMesgs: MutableList<ExdDataConceptConfigurationMesg> = mutableListOf()
-    public val diveSummaryMesgs: MutableList<DiveSummaryMesg> = mutableListOf()
-    public val aadAccelFeaturesMesgs: MutableList<AadAccelFeaturesMesg> = mutableListOf()
-    public val hrvMesgs: MutableList<HrvMesg> = mutableListOf()
-    public val beatIntervalsMesgs: MutableList<BeatIntervalsMesg> = mutableListOf()
-    public val hrvStatusSummaryMesgs: MutableList<HrvStatusSummaryMesg> = mutableListOf()
-    public val hrvValueMesgs: MutableList<HrvValueMesg> = mutableListOf()
-    public val rawBbiMesgs: MutableList<RawBbiMesg> = mutableListOf()
-    public val respirationRateMesgs: MutableList<RespirationRateMesg> = mutableListOf()
-    public val chronoShotSessionMesgs: MutableList<ChronoShotSessionMesg> = mutableListOf()
-    public val chronoShotDataMesgs: MutableList<ChronoShotDataMesg> = mutableListOf()
-    public val tankUpdateMesgs: MutableList<TankUpdateMesg> = mutableListOf()
-    public val tankSummaryMesgs: MutableList<TankSummaryMesg> = mutableListOf()
-    public val sleepAssessmentMesgs: MutableList<SleepAssessmentMesg> = mutableListOf()
-    public val sleepDisruptionSeverityPeriodMesgs: MutableList<SleepDisruptionSeverityPeriodMesg> = mutableListOf()
-    public val sleepDisruptionOvernightSeverityMesgs: MutableList<SleepDisruptionOvernightSeverityMesg> = mutableListOf()
-    public val napEventMesgs: MutableList<NapEventMesg> = mutableListOf()
-    public val skinTempOvernightMesgs: MutableList<SkinTempOvernightMesg> = mutableListOf()
-    public val padMesgs: MutableList<PadMesg> = mutableListOf()
+    private val _fileIdMesgs: MutableList<FileIdMesg> = mutableListOf()
+    private val _fileCreatorMesgs: MutableList<FileCreatorMesg> = mutableListOf()
+    private val _timestampCorrelationMesgs: MutableList<TimestampCorrelationMesg> = mutableListOf()
+    private val _softwareMesgs: MutableList<SoftwareMesg> = mutableListOf()
+    private val _slaveDeviceMesgs: MutableList<SlaveDeviceMesg> = mutableListOf()
+    private val _capabilitiesMesgs: MutableList<CapabilitiesMesg> = mutableListOf()
+    private val _fileCapabilitiesMesgs: MutableList<FileCapabilitiesMesg> = mutableListOf()
+    private val _mesgCapabilitiesMesgs: MutableList<MesgCapabilitiesMesg> = mutableListOf()
+    private val _fieldCapabilitiesMesgs: MutableList<FieldCapabilitiesMesg> = mutableListOf()
+    private val _deviceSettingsMesgs: MutableList<DeviceSettingsMesg> = mutableListOf()
+    private val _userProfileMesgs: MutableList<UserProfileMesg> = mutableListOf()
+    private val _hrmProfileMesgs: MutableList<HrmProfileMesg> = mutableListOf()
+    private val _sdmProfileMesgs: MutableList<SdmProfileMesg> = mutableListOf()
+    private val _bikeProfileMesgs: MutableList<BikeProfileMesg> = mutableListOf()
+    private val _connectivityMesgs: MutableList<ConnectivityMesg> = mutableListOf()
+    private val _watchfaceSettingsMesgs: MutableList<WatchfaceSettingsMesg> = mutableListOf()
+    private val _ohrSettingsMesgs: MutableList<OhrSettingsMesg> = mutableListOf()
+    private val _timeInZoneMesgs: MutableList<TimeInZoneMesg> = mutableListOf()
+    private val _zonesTargetMesgs: MutableList<ZonesTargetMesg> = mutableListOf()
+    private val _sportMesgs: MutableList<SportMesg> = mutableListOf()
+    private val _hrZoneMesgs: MutableList<HrZoneMesg> = mutableListOf()
+    private val _speedZoneMesgs: MutableList<SpeedZoneMesg> = mutableListOf()
+    private val _cadenceZoneMesgs: MutableList<CadenceZoneMesg> = mutableListOf()
+    private val _powerZoneMesgs: MutableList<PowerZoneMesg> = mutableListOf()
+    private val _metZoneMesgs: MutableList<MetZoneMesg> = mutableListOf()
+    private val _trainingSettingsMesgs: MutableList<TrainingSettingsMesg> = mutableListOf()
+    private val _diveSettingsMesgs: MutableList<DiveSettingsMesg> = mutableListOf()
+    private val _diveAlarmMesgs: MutableList<DiveAlarmMesg> = mutableListOf()
+    private val _diveApneaAlarmMesgs: MutableList<DiveApneaAlarmMesg> = mutableListOf()
+    private val _diveGasMesgs: MutableList<DiveGasMesg> = mutableListOf()
+    private val _goalMesgs: MutableList<GoalMesg> = mutableListOf()
+    private val _activityMesgs: MutableList<ActivityMesg> = mutableListOf()
+    private val _sessionMesgs: MutableList<SessionMesg> = mutableListOf()
+    private val _lapMesgs: MutableList<LapMesg> = mutableListOf()
+    private val _lengthMesgs: MutableList<LengthMesg> = mutableListOf()
+    private val _recordMesgs: MutableList<RecordMesg> = mutableListOf()
+    private val _eventMesgs: MutableList<EventMesg> = mutableListOf()
+    private val _deviceInfoMesgs: MutableList<DeviceInfoMesg> = mutableListOf()
+    private val _deviceAuxBatteryInfoMesgs: MutableList<DeviceAuxBatteryInfoMesg> = mutableListOf()
+    private val _trainingFileMesgs: MutableList<TrainingFileMesg> = mutableListOf()
+    private val _weatherConditionsMesgs: MutableList<WeatherConditionsMesg> = mutableListOf()
+    private val _weatherAlertMesgs: MutableList<WeatherAlertMesg> = mutableListOf()
+    private val _gpsMetadataMesgs: MutableList<GpsMetadataMesg> = mutableListOf()
+    private val _cameraEventMesgs: MutableList<CameraEventMesg> = mutableListOf()
+    private val _gyroscopeDataMesgs: MutableList<GyroscopeDataMesg> = mutableListOf()
+    private val _accelerometerDataMesgs: MutableList<AccelerometerDataMesg> = mutableListOf()
+    private val _magnetometerDataMesgs: MutableList<MagnetometerDataMesg> = mutableListOf()
+    private val _barometerDataMesgs: MutableList<BarometerDataMesg> = mutableListOf()
+    private val _threeDSensorCalibrationMesgs: MutableList<ThreeDSensorCalibrationMesg> = mutableListOf()
+    private val _oneDSensorCalibrationMesgs: MutableList<OneDSensorCalibrationMesg> = mutableListOf()
+    private val _videoFrameMesgs: MutableList<VideoFrameMesg> = mutableListOf()
+    private val _obdiiDataMesgs: MutableList<ObdiiDataMesg> = mutableListOf()
+    private val _nmeaSentenceMesgs: MutableList<NmeaSentenceMesg> = mutableListOf()
+    private val _aviationAttitudeMesgs: MutableList<AviationAttitudeMesg> = mutableListOf()
+    private val _videoMesgs: MutableList<VideoMesg> = mutableListOf()
+    private val _videoTitleMesgs: MutableList<VideoTitleMesg> = mutableListOf()
+    private val _videoDescriptionMesgs: MutableList<VideoDescriptionMesg> = mutableListOf()
+    private val _videoClipMesgs: MutableList<VideoClipMesg> = mutableListOf()
+    private val _setMesgs: MutableList<SetMesg> = mutableListOf()
+    private val _jumpMesgs: MutableList<JumpMesg> = mutableListOf()
+    private val _splitMesgs: MutableList<SplitMesg> = mutableListOf()
+    private val _splitSummaryMesgs: MutableList<SplitSummaryMesg> = mutableListOf()
+    private val _climbProMesgs: MutableList<ClimbProMesg> = mutableListOf()
+    private val _fieldDescriptionMesgs: MutableList<FieldDescriptionMesg> = mutableListOf()
+    private val _developerDataIdMesgs: MutableList<DeveloperDataIdMesg> = mutableListOf()
+    private val _courseMesgs: MutableList<CourseMesg> = mutableListOf()
+    private val _coursePointMesgs: MutableList<CoursePointMesg> = mutableListOf()
+    private val _segmentIdMesgs: MutableList<SegmentIdMesg> = mutableListOf()
+    private val _segmentLeaderboardEntryMesgs: MutableList<SegmentLeaderboardEntryMesg> = mutableListOf()
+    private val _segmentPointMesgs: MutableList<SegmentPointMesg> = mutableListOf()
+    private val _segmentLapMesgs: MutableList<SegmentLapMesg> = mutableListOf()
+    private val _segmentFileMesgs: MutableList<SegmentFileMesg> = mutableListOf()
+    private val _workoutMesgs: MutableList<WorkoutMesg> = mutableListOf()
+    private val _workoutSessionMesgs: MutableList<WorkoutSessionMesg> = mutableListOf()
+    private val _workoutStepMesgs: MutableList<WorkoutStepMesg> = mutableListOf()
+    private val _exerciseTitleMesgs: MutableList<ExerciseTitleMesg> = mutableListOf()
+    private val _scheduleMesgs: MutableList<ScheduleMesg> = mutableListOf()
+    private val _totalsMesgs: MutableList<TotalsMesg> = mutableListOf()
+    private val _weightScaleMesgs: MutableList<WeightScaleMesg> = mutableListOf()
+    private val _bloodPressureMesgs: MutableList<BloodPressureMesg> = mutableListOf()
+    private val _monitoringInfoMesgs: MutableList<MonitoringInfoMesg> = mutableListOf()
+    private val _monitoringMesgs: MutableList<MonitoringMesg> = mutableListOf()
+    private val _monitoringHrDataMesgs: MutableList<MonitoringHrDataMesg> = mutableListOf()
+    private val _spo2DataMesgs: MutableList<Spo2DataMesg> = mutableListOf()
+    private val _hrMesgs: MutableList<HrMesg> = mutableListOf()
+    private val _stressLevelMesgs: MutableList<StressLevelMesg> = mutableListOf()
+    private val _maxMetDataMesgs: MutableList<MaxMetDataMesg> = mutableListOf()
+    private val _hsaBodyBatteryDataMesgs: MutableList<HsaBodyBatteryDataMesg> = mutableListOf()
+    private val _hsaEventMesgs: MutableList<HsaEventMesg> = mutableListOf()
+    private val _hsaAccelerometerDataMesgs: MutableList<HsaAccelerometerDataMesg> = mutableListOf()
+    private val _hsaGyroscopeDataMesgs: MutableList<HsaGyroscopeDataMesg> = mutableListOf()
+    private val _hsaStepDataMesgs: MutableList<HsaStepDataMesg> = mutableListOf()
+    private val _hsaSpo2DataMesgs: MutableList<HsaSpo2DataMesg> = mutableListOf()
+    private val _hsaStressDataMesgs: MutableList<HsaStressDataMesg> = mutableListOf()
+    private val _hsaRespirationDataMesgs: MutableList<HsaRespirationDataMesg> = mutableListOf()
+    private val _hsaHeartRateDataMesgs: MutableList<HsaHeartRateDataMesg> = mutableListOf()
+    private val _hsaConfigurationDataMesgs: MutableList<HsaConfigurationDataMesg> = mutableListOf()
+    private val _hsaWristTemperatureDataMesgs: MutableList<HsaWristTemperatureDataMesg> = mutableListOf()
+    private val _memoGlobMesgs: MutableList<MemoGlobMesg> = mutableListOf()
+    private val _sleepLevelMesgs: MutableList<SleepLevelMesg> = mutableListOf()
+    private val _antChannelIdMesgs: MutableList<AntChannelIdMesg> = mutableListOf()
+    private val _antRxMesgs: MutableList<AntRxMesg> = mutableListOf()
+    private val _antTxMesgs: MutableList<AntTxMesg> = mutableListOf()
+    private val _exdScreenConfigurationMesgs: MutableList<ExdScreenConfigurationMesg> = mutableListOf()
+    private val _exdDataFieldConfigurationMesgs: MutableList<ExdDataFieldConfigurationMesg> = mutableListOf()
+    private val _exdDataConceptConfigurationMesgs: MutableList<ExdDataConceptConfigurationMesg> = mutableListOf()
+    private val _diveSummaryMesgs: MutableList<DiveSummaryMesg> = mutableListOf()
+    private val _aadAccelFeaturesMesgs: MutableList<AadAccelFeaturesMesg> = mutableListOf()
+    private val _hrvMesgs: MutableList<HrvMesg> = mutableListOf()
+    private val _beatIntervalsMesgs: MutableList<BeatIntervalsMesg> = mutableListOf()
+    private val _hrvStatusSummaryMesgs: MutableList<HrvStatusSummaryMesg> = mutableListOf()
+    private val _hrvValueMesgs: MutableList<HrvValueMesg> = mutableListOf()
+    private val _rawBbiMesgs: MutableList<RawBbiMesg> = mutableListOf()
+    private val _respirationRateMesgs: MutableList<RespirationRateMesg> = mutableListOf()
+    private val _chronoShotSessionMesgs: MutableList<ChronoShotSessionMesg> = mutableListOf()
+    private val _chronoShotDataMesgs: MutableList<ChronoShotDataMesg> = mutableListOf()
+    private val _tankUpdateMesgs: MutableList<TankUpdateMesg> = mutableListOf()
+    private val _tankSummaryMesgs: MutableList<TankSummaryMesg> = mutableListOf()
+    private val _sleepAssessmentMesgs: MutableList<SleepAssessmentMesg> = mutableListOf()
+    private val _sleepDisruptionSeverityPeriodMesgs: MutableList<SleepDisruptionSeverityPeriodMesg> = mutableListOf()
+    private val _sleepDisruptionOvernightSeverityMesgs: MutableList<SleepDisruptionOvernightSeverityMesg> = mutableListOf()
+    private val _napEventMesgs: MutableList<NapEventMesg> = mutableListOf()
+    private val _skinTempOvernightMesgs: MutableList<SkinTempOvernightMesg> = mutableListOf()
+    private val _padMesgs: MutableList<PadMesg> = mutableListOf()
+    private val _unknownMesgs: MutableList<Mesg> = mutableListOf()
+    private val _developerFieldDescriptions: MutableList<DeveloperFieldDescription> = mutableListOf()
+
+    /** The decoded `file_id` messages, in file order. */
+    public val fileIdMesgs: List<FileIdMesg> get() = _fileIdMesgs
+
+    /** The decoded `file_creator` messages, in file order. */
+    public val fileCreatorMesgs: List<FileCreatorMesg> get() = _fileCreatorMesgs
+
+    /** The decoded `timestamp_correlation` messages, in file order. */
+    public val timestampCorrelationMesgs: List<TimestampCorrelationMesg> get() = _timestampCorrelationMesgs
+
+    /** The decoded `software` messages, in file order. */
+    public val softwareMesgs: List<SoftwareMesg> get() = _softwareMesgs
+
+    /** The decoded `slave_device` messages, in file order. */
+    public val slaveDeviceMesgs: List<SlaveDeviceMesg> get() = _slaveDeviceMesgs
+
+    /** The decoded `capabilities` messages, in file order. */
+    public val capabilitiesMesgs: List<CapabilitiesMesg> get() = _capabilitiesMesgs
+
+    /** The decoded `file_capabilities` messages, in file order. */
+    public val fileCapabilitiesMesgs: List<FileCapabilitiesMesg> get() = _fileCapabilitiesMesgs
+
+    /** The decoded `mesg_capabilities` messages, in file order. */
+    public val mesgCapabilitiesMesgs: List<MesgCapabilitiesMesg> get() = _mesgCapabilitiesMesgs
+
+    /** The decoded `field_capabilities` messages, in file order. */
+    public val fieldCapabilitiesMesgs: List<FieldCapabilitiesMesg> get() = _fieldCapabilitiesMesgs
+
+    /** The decoded `device_settings` messages, in file order. */
+    public val deviceSettingsMesgs: List<DeviceSettingsMesg> get() = _deviceSettingsMesgs
+
+    /** The decoded `user_profile` messages, in file order. */
+    public val userProfileMesgs: List<UserProfileMesg> get() = _userProfileMesgs
+
+    /** The decoded `hrm_profile` messages, in file order. */
+    public val hrmProfileMesgs: List<HrmProfileMesg> get() = _hrmProfileMesgs
+
+    /** The decoded `sdm_profile` messages, in file order. */
+    public val sdmProfileMesgs: List<SdmProfileMesg> get() = _sdmProfileMesgs
+
+    /** The decoded `bike_profile` messages, in file order. */
+    public val bikeProfileMesgs: List<BikeProfileMesg> get() = _bikeProfileMesgs
+
+    /** The decoded `connectivity` messages, in file order. */
+    public val connectivityMesgs: List<ConnectivityMesg> get() = _connectivityMesgs
+
+    /** The decoded `watchface_settings` messages, in file order. */
+    public val watchfaceSettingsMesgs: List<WatchfaceSettingsMesg> get() = _watchfaceSettingsMesgs
+
+    /** The decoded `ohr_settings` messages, in file order. */
+    public val ohrSettingsMesgs: List<OhrSettingsMesg> get() = _ohrSettingsMesgs
+
+    /** The decoded `time_in_zone` messages, in file order. */
+    public val timeInZoneMesgs: List<TimeInZoneMesg> get() = _timeInZoneMesgs
+
+    /** The decoded `zones_target` messages, in file order. */
+    public val zonesTargetMesgs: List<ZonesTargetMesg> get() = _zonesTargetMesgs
+
+    /** The decoded `sport` messages, in file order. */
+    public val sportMesgs: List<SportMesg> get() = _sportMesgs
+
+    /** The decoded `hr_zone` messages, in file order. */
+    public val hrZoneMesgs: List<HrZoneMesg> get() = _hrZoneMesgs
+
+    /** The decoded `speed_zone` messages, in file order. */
+    public val speedZoneMesgs: List<SpeedZoneMesg> get() = _speedZoneMesgs
+
+    /** The decoded `cadence_zone` messages, in file order. */
+    public val cadenceZoneMesgs: List<CadenceZoneMesg> get() = _cadenceZoneMesgs
+
+    /** The decoded `power_zone` messages, in file order. */
+    public val powerZoneMesgs: List<PowerZoneMesg> get() = _powerZoneMesgs
+
+    /** The decoded `met_zone` messages, in file order. */
+    public val metZoneMesgs: List<MetZoneMesg> get() = _metZoneMesgs
+
+    /** The decoded `training_settings` messages, in file order. */
+    public val trainingSettingsMesgs: List<TrainingSettingsMesg> get() = _trainingSettingsMesgs
+
+    /** The decoded `dive_settings` messages, in file order. */
+    public val diveSettingsMesgs: List<DiveSettingsMesg> get() = _diveSettingsMesgs
+
+    /** The decoded `dive_alarm` messages, in file order. */
+    public val diveAlarmMesgs: List<DiveAlarmMesg> get() = _diveAlarmMesgs
+
+    /** The decoded `dive_apnea_alarm` messages, in file order. */
+    public val diveApneaAlarmMesgs: List<DiveApneaAlarmMesg> get() = _diveApneaAlarmMesgs
+
+    /** The decoded `dive_gas` messages, in file order. */
+    public val diveGasMesgs: List<DiveGasMesg> get() = _diveGasMesgs
+
+    /** The decoded `goal` messages, in file order. */
+    public val goalMesgs: List<GoalMesg> get() = _goalMesgs
+
+    /** The decoded `activity` messages, in file order. */
+    public val activityMesgs: List<ActivityMesg> get() = _activityMesgs
+
+    /** The decoded `session` messages, in file order. */
+    public val sessionMesgs: List<SessionMesg> get() = _sessionMesgs
+
+    /** The decoded `lap` messages, in file order. */
+    public val lapMesgs: List<LapMesg> get() = _lapMesgs
+
+    /** The decoded `length` messages, in file order. */
+    public val lengthMesgs: List<LengthMesg> get() = _lengthMesgs
+
+    /** The decoded `record` messages, in file order. */
+    public val recordMesgs: List<RecordMesg> get() = _recordMesgs
+
+    /** The decoded `event` messages, in file order. */
+    public val eventMesgs: List<EventMesg> get() = _eventMesgs
+
+    /** The decoded `device_info` messages, in file order. */
+    public val deviceInfoMesgs: List<DeviceInfoMesg> get() = _deviceInfoMesgs
+
+    /** The decoded `device_aux_battery_info` messages, in file order. */
+    public val deviceAuxBatteryInfoMesgs: List<DeviceAuxBatteryInfoMesg> get() = _deviceAuxBatteryInfoMesgs
+
+    /** The decoded `training_file` messages, in file order. */
+    public val trainingFileMesgs: List<TrainingFileMesg> get() = _trainingFileMesgs
+
+    /** The decoded `weather_conditions` messages, in file order. */
+    public val weatherConditionsMesgs: List<WeatherConditionsMesg> get() = _weatherConditionsMesgs
+
+    /** The decoded `weather_alert` messages, in file order. */
+    public val weatherAlertMesgs: List<WeatherAlertMesg> get() = _weatherAlertMesgs
+
+    /** The decoded `gps_metadata` messages, in file order. */
+    public val gpsMetadataMesgs: List<GpsMetadataMesg> get() = _gpsMetadataMesgs
+
+    /** The decoded `camera_event` messages, in file order. */
+    public val cameraEventMesgs: List<CameraEventMesg> get() = _cameraEventMesgs
+
+    /** The decoded `gyroscope_data` messages, in file order. */
+    public val gyroscopeDataMesgs: List<GyroscopeDataMesg> get() = _gyroscopeDataMesgs
+
+    /** The decoded `accelerometer_data` messages, in file order. */
+    public val accelerometerDataMesgs: List<AccelerometerDataMesg> get() = _accelerometerDataMesgs
+
+    /** The decoded `magnetometer_data` messages, in file order. */
+    public val magnetometerDataMesgs: List<MagnetometerDataMesg> get() = _magnetometerDataMesgs
+
+    /** The decoded `barometer_data` messages, in file order. */
+    public val barometerDataMesgs: List<BarometerDataMesg> get() = _barometerDataMesgs
+
+    /** The decoded `three_d_sensor_calibration` messages, in file order. */
+    public val threeDSensorCalibrationMesgs: List<ThreeDSensorCalibrationMesg> get() = _threeDSensorCalibrationMesgs
+
+    /** The decoded `one_d_sensor_calibration` messages, in file order. */
+    public val oneDSensorCalibrationMesgs: List<OneDSensorCalibrationMesg> get() = _oneDSensorCalibrationMesgs
+
+    /** The decoded `video_frame` messages, in file order. */
+    public val videoFrameMesgs: List<VideoFrameMesg> get() = _videoFrameMesgs
+
+    /** The decoded `obdii_data` messages, in file order. */
+    public val obdiiDataMesgs: List<ObdiiDataMesg> get() = _obdiiDataMesgs
+
+    /** The decoded `nmea_sentence` messages, in file order. */
+    public val nmeaSentenceMesgs: List<NmeaSentenceMesg> get() = _nmeaSentenceMesgs
+
+    /** The decoded `aviation_attitude` messages, in file order. */
+    public val aviationAttitudeMesgs: List<AviationAttitudeMesg> get() = _aviationAttitudeMesgs
+
+    /** The decoded `video` messages, in file order. */
+    public val videoMesgs: List<VideoMesg> get() = _videoMesgs
+
+    /** The decoded `video_title` messages, in file order. */
+    public val videoTitleMesgs: List<VideoTitleMesg> get() = _videoTitleMesgs
+
+    /** The decoded `video_description` messages, in file order. */
+    public val videoDescriptionMesgs: List<VideoDescriptionMesg> get() = _videoDescriptionMesgs
+
+    /** The decoded `video_clip` messages, in file order. */
+    public val videoClipMesgs: List<VideoClipMesg> get() = _videoClipMesgs
+
+    /** The decoded `set` messages, in file order. */
+    public val setMesgs: List<SetMesg> get() = _setMesgs
+
+    /** The decoded `jump` messages, in file order. */
+    public val jumpMesgs: List<JumpMesg> get() = _jumpMesgs
+
+    /** The decoded `split` messages, in file order. */
+    public val splitMesgs: List<SplitMesg> get() = _splitMesgs
+
+    /** The decoded `split_summary` messages, in file order. */
+    public val splitSummaryMesgs: List<SplitSummaryMesg> get() = _splitSummaryMesgs
+
+    /** The decoded `climb_pro` messages, in file order. */
+    public val climbProMesgs: List<ClimbProMesg> get() = _climbProMesgs
+
+    /** The decoded `field_description` messages, in file order. */
+    public val fieldDescriptionMesgs: List<FieldDescriptionMesg> get() = _fieldDescriptionMesgs
+
+    /** The decoded `developer_data_id` messages, in file order. */
+    public val developerDataIdMesgs: List<DeveloperDataIdMesg> get() = _developerDataIdMesgs
+
+    /** The decoded `course` messages, in file order. */
+    public val courseMesgs: List<CourseMesg> get() = _courseMesgs
+
+    /** The decoded `course_point` messages, in file order. */
+    public val coursePointMesgs: List<CoursePointMesg> get() = _coursePointMesgs
+
+    /** The decoded `segment_id` messages, in file order. */
+    public val segmentIdMesgs: List<SegmentIdMesg> get() = _segmentIdMesgs
+
+    /** The decoded `segment_leaderboard_entry` messages, in file order. */
+    public val segmentLeaderboardEntryMesgs: List<SegmentLeaderboardEntryMesg> get() = _segmentLeaderboardEntryMesgs
+
+    /** The decoded `segment_point` messages, in file order. */
+    public val segmentPointMesgs: List<SegmentPointMesg> get() = _segmentPointMesgs
+
+    /** The decoded `segment_lap` messages, in file order. */
+    public val segmentLapMesgs: List<SegmentLapMesg> get() = _segmentLapMesgs
+
+    /** The decoded `segment_file` messages, in file order. */
+    public val segmentFileMesgs: List<SegmentFileMesg> get() = _segmentFileMesgs
+
+    /** The decoded `workout` messages, in file order. */
+    public val workoutMesgs: List<WorkoutMesg> get() = _workoutMesgs
+
+    /** The decoded `workout_session` messages, in file order. */
+    public val workoutSessionMesgs: List<WorkoutSessionMesg> get() = _workoutSessionMesgs
+
+    /** The decoded `workout_step` messages, in file order. */
+    public val workoutStepMesgs: List<WorkoutStepMesg> get() = _workoutStepMesgs
+
+    /** The decoded `exercise_title` messages, in file order. */
+    public val exerciseTitleMesgs: List<ExerciseTitleMesg> get() = _exerciseTitleMesgs
+
+    /** The decoded `schedule` messages, in file order. */
+    public val scheduleMesgs: List<ScheduleMesg> get() = _scheduleMesgs
+
+    /** The decoded `totals` messages, in file order. */
+    public val totalsMesgs: List<TotalsMesg> get() = _totalsMesgs
+
+    /** The decoded `weight_scale` messages, in file order. */
+    public val weightScaleMesgs: List<WeightScaleMesg> get() = _weightScaleMesgs
+
+    /** The decoded `blood_pressure` messages, in file order. */
+    public val bloodPressureMesgs: List<BloodPressureMesg> get() = _bloodPressureMesgs
+
+    /** The decoded `monitoring_info` messages, in file order. */
+    public val monitoringInfoMesgs: List<MonitoringInfoMesg> get() = _monitoringInfoMesgs
+
+    /** The decoded `monitoring` messages, in file order. */
+    public val monitoringMesgs: List<MonitoringMesg> get() = _monitoringMesgs
+
+    /** The decoded `monitoring_hr_data` messages, in file order. */
+    public val monitoringHrDataMesgs: List<MonitoringHrDataMesg> get() = _monitoringHrDataMesgs
+
+    /** The decoded `spo2_data` messages, in file order. */
+    public val spo2DataMesgs: List<Spo2DataMesg> get() = _spo2DataMesgs
+
+    /** The decoded `hr` messages, in file order. */
+    public val hrMesgs: List<HrMesg> get() = _hrMesgs
+
+    /** The decoded `stress_level` messages, in file order. */
+    public val stressLevelMesgs: List<StressLevelMesg> get() = _stressLevelMesgs
+
+    /** The decoded `max_met_data` messages, in file order. */
+    public val maxMetDataMesgs: List<MaxMetDataMesg> get() = _maxMetDataMesgs
+
+    /** The decoded `hsa_body_battery_data` messages, in file order. */
+    public val hsaBodyBatteryDataMesgs: List<HsaBodyBatteryDataMesg> get() = _hsaBodyBatteryDataMesgs
+
+    /** The decoded `hsa_event` messages, in file order. */
+    public val hsaEventMesgs: List<HsaEventMesg> get() = _hsaEventMesgs
+
+    /** The decoded `hsa_accelerometer_data` messages, in file order. */
+    public val hsaAccelerometerDataMesgs: List<HsaAccelerometerDataMesg> get() = _hsaAccelerometerDataMesgs
+
+    /** The decoded `hsa_gyroscope_data` messages, in file order. */
+    public val hsaGyroscopeDataMesgs: List<HsaGyroscopeDataMesg> get() = _hsaGyroscopeDataMesgs
+
+    /** The decoded `hsa_step_data` messages, in file order. */
+    public val hsaStepDataMesgs: List<HsaStepDataMesg> get() = _hsaStepDataMesgs
+
+    /** The decoded `hsa_spo2_data` messages, in file order. */
+    public val hsaSpo2DataMesgs: List<HsaSpo2DataMesg> get() = _hsaSpo2DataMesgs
+
+    /** The decoded `hsa_stress_data` messages, in file order. */
+    public val hsaStressDataMesgs: List<HsaStressDataMesg> get() = _hsaStressDataMesgs
+
+    /** The decoded `hsa_respiration_data` messages, in file order. */
+    public val hsaRespirationDataMesgs: List<HsaRespirationDataMesg> get() = _hsaRespirationDataMesgs
+
+    /** The decoded `hsa_heart_rate_data` messages, in file order. */
+    public val hsaHeartRateDataMesgs: List<HsaHeartRateDataMesg> get() = _hsaHeartRateDataMesgs
+
+    /** The decoded `hsa_configuration_data` messages, in file order. */
+    public val hsaConfigurationDataMesgs: List<HsaConfigurationDataMesg> get() = _hsaConfigurationDataMesgs
+
+    /** The decoded `hsa_wrist_temperature_data` messages, in file order. */
+    public val hsaWristTemperatureDataMesgs: List<HsaWristTemperatureDataMesg> get() = _hsaWristTemperatureDataMesgs
+
+    /** The decoded `memo_glob` messages, in file order. */
+    public val memoGlobMesgs: List<MemoGlobMesg> get() = _memoGlobMesgs
+
+    /** The decoded `sleep_level` messages, in file order. */
+    public val sleepLevelMesgs: List<SleepLevelMesg> get() = _sleepLevelMesgs
+
+    /** The decoded `ant_channel_id` messages, in file order. */
+    public val antChannelIdMesgs: List<AntChannelIdMesg> get() = _antChannelIdMesgs
+
+    /** The decoded `ant_rx` messages, in file order. */
+    public val antRxMesgs: List<AntRxMesg> get() = _antRxMesgs
+
+    /** The decoded `ant_tx` messages, in file order. */
+    public val antTxMesgs: List<AntTxMesg> get() = _antTxMesgs
+
+    /** The decoded `exd_screen_configuration` messages, in file order. */
+    public val exdScreenConfigurationMesgs: List<ExdScreenConfigurationMesg> get() = _exdScreenConfigurationMesgs
+
+    /** The decoded `exd_data_field_configuration` messages, in file order. */
+    public val exdDataFieldConfigurationMesgs: List<ExdDataFieldConfigurationMesg> get() = _exdDataFieldConfigurationMesgs
+
+    /** The decoded `exd_data_concept_configuration` messages, in file order. */
+    public val exdDataConceptConfigurationMesgs: List<ExdDataConceptConfigurationMesg> get() = _exdDataConceptConfigurationMesgs
+
+    /** The decoded `dive_summary` messages, in file order. */
+    public val diveSummaryMesgs: List<DiveSummaryMesg> get() = _diveSummaryMesgs
+
+    /** The decoded `aad_accel_features` messages, in file order. */
+    public val aadAccelFeaturesMesgs: List<AadAccelFeaturesMesg> get() = _aadAccelFeaturesMesgs
+
+    /** The decoded `hrv` messages, in file order. */
+    public val hrvMesgs: List<HrvMesg> get() = _hrvMesgs
+
+    /** The decoded `beat_intervals` messages, in file order. */
+    public val beatIntervalsMesgs: List<BeatIntervalsMesg> get() = _beatIntervalsMesgs
+
+    /** The decoded `hrv_status_summary` messages, in file order. */
+    public val hrvStatusSummaryMesgs: List<HrvStatusSummaryMesg> get() = _hrvStatusSummaryMesgs
+
+    /** The decoded `hrv_value` messages, in file order. */
+    public val hrvValueMesgs: List<HrvValueMesg> get() = _hrvValueMesgs
+
+    /** The decoded `raw_bbi` messages, in file order. */
+    public val rawBbiMesgs: List<RawBbiMesg> get() = _rawBbiMesgs
+
+    /** The decoded `respiration_rate` messages, in file order. */
+    public val respirationRateMesgs: List<RespirationRateMesg> get() = _respirationRateMesgs
+
+    /** The decoded `chrono_shot_session` messages, in file order. */
+    public val chronoShotSessionMesgs: List<ChronoShotSessionMesg> get() = _chronoShotSessionMesgs
+
+    /** The decoded `chrono_shot_data` messages, in file order. */
+    public val chronoShotDataMesgs: List<ChronoShotDataMesg> get() = _chronoShotDataMesgs
+
+    /** The decoded `tank_update` messages, in file order. */
+    public val tankUpdateMesgs: List<TankUpdateMesg> get() = _tankUpdateMesgs
+
+    /** The decoded `tank_summary` messages, in file order. */
+    public val tankSummaryMesgs: List<TankSummaryMesg> get() = _tankSummaryMesgs
+
+    /** The decoded `sleep_assessment` messages, in file order. */
+    public val sleepAssessmentMesgs: List<SleepAssessmentMesg> get() = _sleepAssessmentMesgs
+
+    /** The decoded `sleep_disruption_severity_period` messages, in file order. */
+    public val sleepDisruptionSeverityPeriodMesgs: List<SleepDisruptionSeverityPeriodMesg> get() = _sleepDisruptionSeverityPeriodMesgs
+
+    /** The decoded `sleep_disruption_overnight_severity` messages, in file order. */
+    public val sleepDisruptionOvernightSeverityMesgs: List<SleepDisruptionOvernightSeverityMesg> get() = _sleepDisruptionOvernightSeverityMesgs
+
+    /** The decoded `nap_event` messages, in file order. */
+    public val napEventMesgs: List<NapEventMesg> get() = _napEventMesgs
+
+    /** The decoded `skin_temp_overnight` messages, in file order. */
+    public val skinTempOvernightMesgs: List<SkinTempOvernightMesg> get() = _skinTempOvernightMesgs
+
+    /** The decoded `pad` messages, in file order. */
+    public val padMesgs: List<PadMesg> get() = _padMesgs
 
     /** Messages whose global number is absent from the profile. */
-    public val unknownMesgs: MutableList<Mesg> = mutableListOf()
+    public val unknownMesgs: List<Mesg> get() = _unknownMesgs
 
     /** Every developer field declaration seen while decoding. */
-    public val developerFieldDescriptions: MutableList<DeveloperFieldDescription> = mutableListOf()
+    public val developerFieldDescriptions: List<DeveloperFieldDescription> get() = _developerFieldDescriptions
 
     internal fun add(mesg: Mesg) {
         when (mesg.globalMesgNum.toInt()) {
-            0 -> fileIdMesgs.add(mesg as? FileIdMesg ?: FileIdMesg(mesg))
-            49 -> fileCreatorMesgs.add(mesg as? FileCreatorMesg ?: FileCreatorMesg(mesg))
-            162 -> timestampCorrelationMesgs.add(mesg as? TimestampCorrelationMesg ?: TimestampCorrelationMesg(mesg))
-            35 -> softwareMesgs.add(mesg as? SoftwareMesg ?: SoftwareMesg(mesg))
-            106 -> slaveDeviceMesgs.add(mesg as? SlaveDeviceMesg ?: SlaveDeviceMesg(mesg))
-            1 -> capabilitiesMesgs.add(mesg as? CapabilitiesMesg ?: CapabilitiesMesg(mesg))
-            37 -> fileCapabilitiesMesgs.add(mesg as? FileCapabilitiesMesg ?: FileCapabilitiesMesg(mesg))
-            38 -> mesgCapabilitiesMesgs.add(mesg as? MesgCapabilitiesMesg ?: MesgCapabilitiesMesg(mesg))
-            39 -> fieldCapabilitiesMesgs.add(mesg as? FieldCapabilitiesMesg ?: FieldCapabilitiesMesg(mesg))
-            2 -> deviceSettingsMesgs.add(mesg as? DeviceSettingsMesg ?: DeviceSettingsMesg(mesg))
-            3 -> userProfileMesgs.add(mesg as? UserProfileMesg ?: UserProfileMesg(mesg))
-            4 -> hrmProfileMesgs.add(mesg as? HrmProfileMesg ?: HrmProfileMesg(mesg))
-            5 -> sdmProfileMesgs.add(mesg as? SdmProfileMesg ?: SdmProfileMesg(mesg))
-            6 -> bikeProfileMesgs.add(mesg as? BikeProfileMesg ?: BikeProfileMesg(mesg))
-            127 -> connectivityMesgs.add(mesg as? ConnectivityMesg ?: ConnectivityMesg(mesg))
-            159 -> watchfaceSettingsMesgs.add(mesg as? WatchfaceSettingsMesg ?: WatchfaceSettingsMesg(mesg))
-            188 -> ohrSettingsMesgs.add(mesg as? OhrSettingsMesg ?: OhrSettingsMesg(mesg))
-            216 -> timeInZoneMesgs.add(mesg as? TimeInZoneMesg ?: TimeInZoneMesg(mesg))
-            7 -> zonesTargetMesgs.add(mesg as? ZonesTargetMesg ?: ZonesTargetMesg(mesg))
-            12 -> sportMesgs.add(mesg as? SportMesg ?: SportMesg(mesg))
-            8 -> hrZoneMesgs.add(mesg as? HrZoneMesg ?: HrZoneMesg(mesg))
-            53 -> speedZoneMesgs.add(mesg as? SpeedZoneMesg ?: SpeedZoneMesg(mesg))
-            131 -> cadenceZoneMesgs.add(mesg as? CadenceZoneMesg ?: CadenceZoneMesg(mesg))
-            9 -> powerZoneMesgs.add(mesg as? PowerZoneMesg ?: PowerZoneMesg(mesg))
-            10 -> metZoneMesgs.add(mesg as? MetZoneMesg ?: MetZoneMesg(mesg))
-            13 -> trainingSettingsMesgs.add(mesg as? TrainingSettingsMesg ?: TrainingSettingsMesg(mesg))
-            258 -> diveSettingsMesgs.add(mesg as? DiveSettingsMesg ?: DiveSettingsMesg(mesg))
-            262 -> diveAlarmMesgs.add(mesg as? DiveAlarmMesg ?: DiveAlarmMesg(mesg))
-            393 -> diveApneaAlarmMesgs.add(mesg as? DiveApneaAlarmMesg ?: DiveApneaAlarmMesg(mesg))
-            259 -> diveGasMesgs.add(mesg as? DiveGasMesg ?: DiveGasMesg(mesg))
-            15 -> goalMesgs.add(mesg as? GoalMesg ?: GoalMesg(mesg))
-            34 -> activityMesgs.add(mesg as? ActivityMesg ?: ActivityMesg(mesg))
-            18 -> sessionMesgs.add(mesg as? SessionMesg ?: SessionMesg(mesg))
-            19 -> lapMesgs.add(mesg as? LapMesg ?: LapMesg(mesg))
-            101 -> lengthMesgs.add(mesg as? LengthMesg ?: LengthMesg(mesg))
-            20 -> recordMesgs.add(mesg as? RecordMesg ?: RecordMesg(mesg))
-            21 -> eventMesgs.add(mesg as? EventMesg ?: EventMesg(mesg))
-            23 -> deviceInfoMesgs.add(mesg as? DeviceInfoMesg ?: DeviceInfoMesg(mesg))
-            375 -> deviceAuxBatteryInfoMesgs.add(mesg as? DeviceAuxBatteryInfoMesg ?: DeviceAuxBatteryInfoMesg(mesg))
-            72 -> trainingFileMesgs.add(mesg as? TrainingFileMesg ?: TrainingFileMesg(mesg))
-            128 -> weatherConditionsMesgs.add(mesg as? WeatherConditionsMesg ?: WeatherConditionsMesg(mesg))
-            129 -> weatherAlertMesgs.add(mesg as? WeatherAlertMesg ?: WeatherAlertMesg(mesg))
-            160 -> gpsMetadataMesgs.add(mesg as? GpsMetadataMesg ?: GpsMetadataMesg(mesg))
-            161 -> cameraEventMesgs.add(mesg as? CameraEventMesg ?: CameraEventMesg(mesg))
-            164 -> gyroscopeDataMesgs.add(mesg as? GyroscopeDataMesg ?: GyroscopeDataMesg(mesg))
-            165 -> accelerometerDataMesgs.add(mesg as? AccelerometerDataMesg ?: AccelerometerDataMesg(mesg))
-            208 -> magnetometerDataMesgs.add(mesg as? MagnetometerDataMesg ?: MagnetometerDataMesg(mesg))
-            209 -> barometerDataMesgs.add(mesg as? BarometerDataMesg ?: BarometerDataMesg(mesg))
-            167 -> threeDSensorCalibrationMesgs.add(mesg as? ThreeDSensorCalibrationMesg ?: ThreeDSensorCalibrationMesg(mesg))
-            210 -> oneDSensorCalibrationMesgs.add(mesg as? OneDSensorCalibrationMesg ?: OneDSensorCalibrationMesg(mesg))
-            169 -> videoFrameMesgs.add(mesg as? VideoFrameMesg ?: VideoFrameMesg(mesg))
-            174 -> obdiiDataMesgs.add(mesg as? ObdiiDataMesg ?: ObdiiDataMesg(mesg))
-            177 -> nmeaSentenceMesgs.add(mesg as? NmeaSentenceMesg ?: NmeaSentenceMesg(mesg))
-            178 -> aviationAttitudeMesgs.add(mesg as? AviationAttitudeMesg ?: AviationAttitudeMesg(mesg))
-            184 -> videoMesgs.add(mesg as? VideoMesg ?: VideoMesg(mesg))
-            185 -> videoTitleMesgs.add(mesg as? VideoTitleMesg ?: VideoTitleMesg(mesg))
-            186 -> videoDescriptionMesgs.add(mesg as? VideoDescriptionMesg ?: VideoDescriptionMesg(mesg))
-            187 -> videoClipMesgs.add(mesg as? VideoClipMesg ?: VideoClipMesg(mesg))
-            225 -> setMesgs.add(mesg as? SetMesg ?: SetMesg(mesg))
-            285 -> jumpMesgs.add(mesg as? JumpMesg ?: JumpMesg(mesg))
-            312 -> splitMesgs.add(mesg as? SplitMesg ?: SplitMesg(mesg))
-            313 -> splitSummaryMesgs.add(mesg as? SplitSummaryMesg ?: SplitSummaryMesg(mesg))
-            317 -> climbProMesgs.add(mesg as? ClimbProMesg ?: ClimbProMesg(mesg))
-            206 -> fieldDescriptionMesgs.add(mesg as? FieldDescriptionMesg ?: FieldDescriptionMesg(mesg))
-            207 -> developerDataIdMesgs.add(mesg as? DeveloperDataIdMesg ?: DeveloperDataIdMesg(mesg))
-            31 -> courseMesgs.add(mesg as? CourseMesg ?: CourseMesg(mesg))
-            32 -> coursePointMesgs.add(mesg as? CoursePointMesg ?: CoursePointMesg(mesg))
-            148 -> segmentIdMesgs.add(mesg as? SegmentIdMesg ?: SegmentIdMesg(mesg))
-            149 -> segmentLeaderboardEntryMesgs.add(mesg as? SegmentLeaderboardEntryMesg ?: SegmentLeaderboardEntryMesg(mesg))
-            150 -> segmentPointMesgs.add(mesg as? SegmentPointMesg ?: SegmentPointMesg(mesg))
-            142 -> segmentLapMesgs.add(mesg as? SegmentLapMesg ?: SegmentLapMesg(mesg))
-            151 -> segmentFileMesgs.add(mesg as? SegmentFileMesg ?: SegmentFileMesg(mesg))
-            26 -> workoutMesgs.add(mesg as? WorkoutMesg ?: WorkoutMesg(mesg))
-            158 -> workoutSessionMesgs.add(mesg as? WorkoutSessionMesg ?: WorkoutSessionMesg(mesg))
-            27 -> workoutStepMesgs.add(mesg as? WorkoutStepMesg ?: WorkoutStepMesg(mesg))
-            264 -> exerciseTitleMesgs.add(mesg as? ExerciseTitleMesg ?: ExerciseTitleMesg(mesg))
-            28 -> scheduleMesgs.add(mesg as? ScheduleMesg ?: ScheduleMesg(mesg))
-            33 -> totalsMesgs.add(mesg as? TotalsMesg ?: TotalsMesg(mesg))
-            30 -> weightScaleMesgs.add(mesg as? WeightScaleMesg ?: WeightScaleMesg(mesg))
-            51 -> bloodPressureMesgs.add(mesg as? BloodPressureMesg ?: BloodPressureMesg(mesg))
-            103 -> monitoringInfoMesgs.add(mesg as? MonitoringInfoMesg ?: MonitoringInfoMesg(mesg))
-            55 -> monitoringMesgs.add(mesg as? MonitoringMesg ?: MonitoringMesg(mesg))
-            211 -> monitoringHrDataMesgs.add(mesg as? MonitoringHrDataMesg ?: MonitoringHrDataMesg(mesg))
-            269 -> spo2DataMesgs.add(mesg as? Spo2DataMesg ?: Spo2DataMesg(mesg))
-            132 -> hrMesgs.add(mesg as? HrMesg ?: HrMesg(mesg))
-            227 -> stressLevelMesgs.add(mesg as? StressLevelMesg ?: StressLevelMesg(mesg))
-            229 -> maxMetDataMesgs.add(mesg as? MaxMetDataMesg ?: MaxMetDataMesg(mesg))
-            314 -> hsaBodyBatteryDataMesgs.add(mesg as? HsaBodyBatteryDataMesg ?: HsaBodyBatteryDataMesg(mesg))
-            315 -> hsaEventMesgs.add(mesg as? HsaEventMesg ?: HsaEventMesg(mesg))
-            302 -> hsaAccelerometerDataMesgs.add(mesg as? HsaAccelerometerDataMesg ?: HsaAccelerometerDataMesg(mesg))
-            376 -> hsaGyroscopeDataMesgs.add(mesg as? HsaGyroscopeDataMesg ?: HsaGyroscopeDataMesg(mesg))
-            304 -> hsaStepDataMesgs.add(mesg as? HsaStepDataMesg ?: HsaStepDataMesg(mesg))
-            305 -> hsaSpo2DataMesgs.add(mesg as? HsaSpo2DataMesg ?: HsaSpo2DataMesg(mesg))
-            306 -> hsaStressDataMesgs.add(mesg as? HsaStressDataMesg ?: HsaStressDataMesg(mesg))
-            307 -> hsaRespirationDataMesgs.add(mesg as? HsaRespirationDataMesg ?: HsaRespirationDataMesg(mesg))
-            308 -> hsaHeartRateDataMesgs.add(mesg as? HsaHeartRateDataMesg ?: HsaHeartRateDataMesg(mesg))
-            389 -> hsaConfigurationDataMesgs.add(mesg as? HsaConfigurationDataMesg ?: HsaConfigurationDataMesg(mesg))
-            409 -> hsaWristTemperatureDataMesgs.add(mesg as? HsaWristTemperatureDataMesg ?: HsaWristTemperatureDataMesg(mesg))
-            145 -> memoGlobMesgs.add(mesg as? MemoGlobMesg ?: MemoGlobMesg(mesg))
-            275 -> sleepLevelMesgs.add(mesg as? SleepLevelMesg ?: SleepLevelMesg(mesg))
-            82 -> antChannelIdMesgs.add(mesg as? AntChannelIdMesg ?: AntChannelIdMesg(mesg))
-            80 -> antRxMesgs.add(mesg as? AntRxMesg ?: AntRxMesg(mesg))
-            81 -> antTxMesgs.add(mesg as? AntTxMesg ?: AntTxMesg(mesg))
-            200 -> exdScreenConfigurationMesgs.add(mesg as? ExdScreenConfigurationMesg ?: ExdScreenConfigurationMesg(mesg))
-            201 -> exdDataFieldConfigurationMesgs.add(mesg as? ExdDataFieldConfigurationMesg ?: ExdDataFieldConfigurationMesg(mesg))
-            202 -> exdDataConceptConfigurationMesgs.add(mesg as? ExdDataConceptConfigurationMesg ?: ExdDataConceptConfigurationMesg(mesg))
-            268 -> diveSummaryMesgs.add(mesg as? DiveSummaryMesg ?: DiveSummaryMesg(mesg))
-            289 -> aadAccelFeaturesMesgs.add(mesg as? AadAccelFeaturesMesg ?: AadAccelFeaturesMesg(mesg))
-            78 -> hrvMesgs.add(mesg as? HrvMesg ?: HrvMesg(mesg))
-            290 -> beatIntervalsMesgs.add(mesg as? BeatIntervalsMesg ?: BeatIntervalsMesg(mesg))
-            370 -> hrvStatusSummaryMesgs.add(mesg as? HrvStatusSummaryMesg ?: HrvStatusSummaryMesg(mesg))
-            371 -> hrvValueMesgs.add(mesg as? HrvValueMesg ?: HrvValueMesg(mesg))
-            372 -> rawBbiMesgs.add(mesg as? RawBbiMesg ?: RawBbiMesg(mesg))
-            297 -> respirationRateMesgs.add(mesg as? RespirationRateMesg ?: RespirationRateMesg(mesg))
-            387 -> chronoShotSessionMesgs.add(mesg as? ChronoShotSessionMesg ?: ChronoShotSessionMesg(mesg))
-            388 -> chronoShotDataMesgs.add(mesg as? ChronoShotDataMesg ?: ChronoShotDataMesg(mesg))
-            319 -> tankUpdateMesgs.add(mesg as? TankUpdateMesg ?: TankUpdateMesg(mesg))
-            323 -> tankSummaryMesgs.add(mesg as? TankSummaryMesg ?: TankSummaryMesg(mesg))
-            346 -> sleepAssessmentMesgs.add(mesg as? SleepAssessmentMesg ?: SleepAssessmentMesg(mesg))
-            470 -> sleepDisruptionSeverityPeriodMesgs.add(mesg as? SleepDisruptionSeverityPeriodMesg ?: SleepDisruptionSeverityPeriodMesg(mesg))
-            471 -> sleepDisruptionOvernightSeverityMesgs.add(mesg as? SleepDisruptionOvernightSeverityMesg ?: SleepDisruptionOvernightSeverityMesg(mesg))
-            412 -> napEventMesgs.add(mesg as? NapEventMesg ?: NapEventMesg(mesg))
-            398 -> skinTempOvernightMesgs.add(mesg as? SkinTempOvernightMesg ?: SkinTempOvernightMesg(mesg))
-            105 -> padMesgs.add(mesg as? PadMesg ?: PadMesg(mesg))
-            else -> unknownMesgs.add(mesg)
+            0 -> _fileIdMesgs.add(mesg as? FileIdMesg ?: FileIdMesg(mesg))
+            49 -> _fileCreatorMesgs.add(mesg as? FileCreatorMesg ?: FileCreatorMesg(mesg))
+            162 -> _timestampCorrelationMesgs.add(mesg as? TimestampCorrelationMesg ?: TimestampCorrelationMesg(mesg))
+            35 -> _softwareMesgs.add(mesg as? SoftwareMesg ?: SoftwareMesg(mesg))
+            106 -> _slaveDeviceMesgs.add(mesg as? SlaveDeviceMesg ?: SlaveDeviceMesg(mesg))
+            1 -> _capabilitiesMesgs.add(mesg as? CapabilitiesMesg ?: CapabilitiesMesg(mesg))
+            37 -> _fileCapabilitiesMesgs.add(mesg as? FileCapabilitiesMesg ?: FileCapabilitiesMesg(mesg))
+            38 -> _mesgCapabilitiesMesgs.add(mesg as? MesgCapabilitiesMesg ?: MesgCapabilitiesMesg(mesg))
+            39 -> _fieldCapabilitiesMesgs.add(mesg as? FieldCapabilitiesMesg ?: FieldCapabilitiesMesg(mesg))
+            2 -> _deviceSettingsMesgs.add(mesg as? DeviceSettingsMesg ?: DeviceSettingsMesg(mesg))
+            3 -> _userProfileMesgs.add(mesg as? UserProfileMesg ?: UserProfileMesg(mesg))
+            4 -> _hrmProfileMesgs.add(mesg as? HrmProfileMesg ?: HrmProfileMesg(mesg))
+            5 -> _sdmProfileMesgs.add(mesg as? SdmProfileMesg ?: SdmProfileMesg(mesg))
+            6 -> _bikeProfileMesgs.add(mesg as? BikeProfileMesg ?: BikeProfileMesg(mesg))
+            127 -> _connectivityMesgs.add(mesg as? ConnectivityMesg ?: ConnectivityMesg(mesg))
+            159 -> _watchfaceSettingsMesgs.add(mesg as? WatchfaceSettingsMesg ?: WatchfaceSettingsMesg(mesg))
+            188 -> _ohrSettingsMesgs.add(mesg as? OhrSettingsMesg ?: OhrSettingsMesg(mesg))
+            216 -> _timeInZoneMesgs.add(mesg as? TimeInZoneMesg ?: TimeInZoneMesg(mesg))
+            7 -> _zonesTargetMesgs.add(mesg as? ZonesTargetMesg ?: ZonesTargetMesg(mesg))
+            12 -> _sportMesgs.add(mesg as? SportMesg ?: SportMesg(mesg))
+            8 -> _hrZoneMesgs.add(mesg as? HrZoneMesg ?: HrZoneMesg(mesg))
+            53 -> _speedZoneMesgs.add(mesg as? SpeedZoneMesg ?: SpeedZoneMesg(mesg))
+            131 -> _cadenceZoneMesgs.add(mesg as? CadenceZoneMesg ?: CadenceZoneMesg(mesg))
+            9 -> _powerZoneMesgs.add(mesg as? PowerZoneMesg ?: PowerZoneMesg(mesg))
+            10 -> _metZoneMesgs.add(mesg as? MetZoneMesg ?: MetZoneMesg(mesg))
+            13 -> _trainingSettingsMesgs.add(mesg as? TrainingSettingsMesg ?: TrainingSettingsMesg(mesg))
+            258 -> _diveSettingsMesgs.add(mesg as? DiveSettingsMesg ?: DiveSettingsMesg(mesg))
+            262 -> _diveAlarmMesgs.add(mesg as? DiveAlarmMesg ?: DiveAlarmMesg(mesg))
+            393 -> _diveApneaAlarmMesgs.add(mesg as? DiveApneaAlarmMesg ?: DiveApneaAlarmMesg(mesg))
+            259 -> _diveGasMesgs.add(mesg as? DiveGasMesg ?: DiveGasMesg(mesg))
+            15 -> _goalMesgs.add(mesg as? GoalMesg ?: GoalMesg(mesg))
+            34 -> _activityMesgs.add(mesg as? ActivityMesg ?: ActivityMesg(mesg))
+            18 -> _sessionMesgs.add(mesg as? SessionMesg ?: SessionMesg(mesg))
+            19 -> _lapMesgs.add(mesg as? LapMesg ?: LapMesg(mesg))
+            101 -> _lengthMesgs.add(mesg as? LengthMesg ?: LengthMesg(mesg))
+            20 -> _recordMesgs.add(mesg as? RecordMesg ?: RecordMesg(mesg))
+            21 -> _eventMesgs.add(mesg as? EventMesg ?: EventMesg(mesg))
+            23 -> _deviceInfoMesgs.add(mesg as? DeviceInfoMesg ?: DeviceInfoMesg(mesg))
+            375 -> _deviceAuxBatteryInfoMesgs.add(mesg as? DeviceAuxBatteryInfoMesg ?: DeviceAuxBatteryInfoMesg(mesg))
+            72 -> _trainingFileMesgs.add(mesg as? TrainingFileMesg ?: TrainingFileMesg(mesg))
+            128 -> _weatherConditionsMesgs.add(mesg as? WeatherConditionsMesg ?: WeatherConditionsMesg(mesg))
+            129 -> _weatherAlertMesgs.add(mesg as? WeatherAlertMesg ?: WeatherAlertMesg(mesg))
+            160 -> _gpsMetadataMesgs.add(mesg as? GpsMetadataMesg ?: GpsMetadataMesg(mesg))
+            161 -> _cameraEventMesgs.add(mesg as? CameraEventMesg ?: CameraEventMesg(mesg))
+            164 -> _gyroscopeDataMesgs.add(mesg as? GyroscopeDataMesg ?: GyroscopeDataMesg(mesg))
+            165 -> _accelerometerDataMesgs.add(mesg as? AccelerometerDataMesg ?: AccelerometerDataMesg(mesg))
+            208 -> _magnetometerDataMesgs.add(mesg as? MagnetometerDataMesg ?: MagnetometerDataMesg(mesg))
+            209 -> _barometerDataMesgs.add(mesg as? BarometerDataMesg ?: BarometerDataMesg(mesg))
+            167 -> _threeDSensorCalibrationMesgs.add(mesg as? ThreeDSensorCalibrationMesg ?: ThreeDSensorCalibrationMesg(mesg))
+            210 -> _oneDSensorCalibrationMesgs.add(mesg as? OneDSensorCalibrationMesg ?: OneDSensorCalibrationMesg(mesg))
+            169 -> _videoFrameMesgs.add(mesg as? VideoFrameMesg ?: VideoFrameMesg(mesg))
+            174 -> _obdiiDataMesgs.add(mesg as? ObdiiDataMesg ?: ObdiiDataMesg(mesg))
+            177 -> _nmeaSentenceMesgs.add(mesg as? NmeaSentenceMesg ?: NmeaSentenceMesg(mesg))
+            178 -> _aviationAttitudeMesgs.add(mesg as? AviationAttitudeMesg ?: AviationAttitudeMesg(mesg))
+            184 -> _videoMesgs.add(mesg as? VideoMesg ?: VideoMesg(mesg))
+            185 -> _videoTitleMesgs.add(mesg as? VideoTitleMesg ?: VideoTitleMesg(mesg))
+            186 -> _videoDescriptionMesgs.add(mesg as? VideoDescriptionMesg ?: VideoDescriptionMesg(mesg))
+            187 -> _videoClipMesgs.add(mesg as? VideoClipMesg ?: VideoClipMesg(mesg))
+            225 -> _setMesgs.add(mesg as? SetMesg ?: SetMesg(mesg))
+            285 -> _jumpMesgs.add(mesg as? JumpMesg ?: JumpMesg(mesg))
+            312 -> _splitMesgs.add(mesg as? SplitMesg ?: SplitMesg(mesg))
+            313 -> _splitSummaryMesgs.add(mesg as? SplitSummaryMesg ?: SplitSummaryMesg(mesg))
+            317 -> _climbProMesgs.add(mesg as? ClimbProMesg ?: ClimbProMesg(mesg))
+            206 -> _fieldDescriptionMesgs.add(mesg as? FieldDescriptionMesg ?: FieldDescriptionMesg(mesg))
+            207 -> _developerDataIdMesgs.add(mesg as? DeveloperDataIdMesg ?: DeveloperDataIdMesg(mesg))
+            31 -> _courseMesgs.add(mesg as? CourseMesg ?: CourseMesg(mesg))
+            32 -> _coursePointMesgs.add(mesg as? CoursePointMesg ?: CoursePointMesg(mesg))
+            148 -> _segmentIdMesgs.add(mesg as? SegmentIdMesg ?: SegmentIdMesg(mesg))
+            149 -> _segmentLeaderboardEntryMesgs.add(mesg as? SegmentLeaderboardEntryMesg ?: SegmentLeaderboardEntryMesg(mesg))
+            150 -> _segmentPointMesgs.add(mesg as? SegmentPointMesg ?: SegmentPointMesg(mesg))
+            142 -> _segmentLapMesgs.add(mesg as? SegmentLapMesg ?: SegmentLapMesg(mesg))
+            151 -> _segmentFileMesgs.add(mesg as? SegmentFileMesg ?: SegmentFileMesg(mesg))
+            26 -> _workoutMesgs.add(mesg as? WorkoutMesg ?: WorkoutMesg(mesg))
+            158 -> _workoutSessionMesgs.add(mesg as? WorkoutSessionMesg ?: WorkoutSessionMesg(mesg))
+            27 -> _workoutStepMesgs.add(mesg as? WorkoutStepMesg ?: WorkoutStepMesg(mesg))
+            264 -> _exerciseTitleMesgs.add(mesg as? ExerciseTitleMesg ?: ExerciseTitleMesg(mesg))
+            28 -> _scheduleMesgs.add(mesg as? ScheduleMesg ?: ScheduleMesg(mesg))
+            33 -> _totalsMesgs.add(mesg as? TotalsMesg ?: TotalsMesg(mesg))
+            30 -> _weightScaleMesgs.add(mesg as? WeightScaleMesg ?: WeightScaleMesg(mesg))
+            51 -> _bloodPressureMesgs.add(mesg as? BloodPressureMesg ?: BloodPressureMesg(mesg))
+            103 -> _monitoringInfoMesgs.add(mesg as? MonitoringInfoMesg ?: MonitoringInfoMesg(mesg))
+            55 -> _monitoringMesgs.add(mesg as? MonitoringMesg ?: MonitoringMesg(mesg))
+            211 -> _monitoringHrDataMesgs.add(mesg as? MonitoringHrDataMesg ?: MonitoringHrDataMesg(mesg))
+            269 -> _spo2DataMesgs.add(mesg as? Spo2DataMesg ?: Spo2DataMesg(mesg))
+            132 -> _hrMesgs.add(mesg as? HrMesg ?: HrMesg(mesg))
+            227 -> _stressLevelMesgs.add(mesg as? StressLevelMesg ?: StressLevelMesg(mesg))
+            229 -> _maxMetDataMesgs.add(mesg as? MaxMetDataMesg ?: MaxMetDataMesg(mesg))
+            314 -> _hsaBodyBatteryDataMesgs.add(mesg as? HsaBodyBatteryDataMesg ?: HsaBodyBatteryDataMesg(mesg))
+            315 -> _hsaEventMesgs.add(mesg as? HsaEventMesg ?: HsaEventMesg(mesg))
+            302 -> _hsaAccelerometerDataMesgs.add(mesg as? HsaAccelerometerDataMesg ?: HsaAccelerometerDataMesg(mesg))
+            376 -> _hsaGyroscopeDataMesgs.add(mesg as? HsaGyroscopeDataMesg ?: HsaGyroscopeDataMesg(mesg))
+            304 -> _hsaStepDataMesgs.add(mesg as? HsaStepDataMesg ?: HsaStepDataMesg(mesg))
+            305 -> _hsaSpo2DataMesgs.add(mesg as? HsaSpo2DataMesg ?: HsaSpo2DataMesg(mesg))
+            306 -> _hsaStressDataMesgs.add(mesg as? HsaStressDataMesg ?: HsaStressDataMesg(mesg))
+            307 -> _hsaRespirationDataMesgs.add(mesg as? HsaRespirationDataMesg ?: HsaRespirationDataMesg(mesg))
+            308 -> _hsaHeartRateDataMesgs.add(mesg as? HsaHeartRateDataMesg ?: HsaHeartRateDataMesg(mesg))
+            389 -> _hsaConfigurationDataMesgs.add(mesg as? HsaConfigurationDataMesg ?: HsaConfigurationDataMesg(mesg))
+            409 -> _hsaWristTemperatureDataMesgs.add(mesg as? HsaWristTemperatureDataMesg ?: HsaWristTemperatureDataMesg(mesg))
+            145 -> _memoGlobMesgs.add(mesg as? MemoGlobMesg ?: MemoGlobMesg(mesg))
+            275 -> _sleepLevelMesgs.add(mesg as? SleepLevelMesg ?: SleepLevelMesg(mesg))
+            82 -> _antChannelIdMesgs.add(mesg as? AntChannelIdMesg ?: AntChannelIdMesg(mesg))
+            80 -> _antRxMesgs.add(mesg as? AntRxMesg ?: AntRxMesg(mesg))
+            81 -> _antTxMesgs.add(mesg as? AntTxMesg ?: AntTxMesg(mesg))
+            200 -> _exdScreenConfigurationMesgs.add(mesg as? ExdScreenConfigurationMesg ?: ExdScreenConfigurationMesg(mesg))
+            201 -> _exdDataFieldConfigurationMesgs.add(mesg as? ExdDataFieldConfigurationMesg ?: ExdDataFieldConfigurationMesg(mesg))
+            202 -> _exdDataConceptConfigurationMesgs.add(mesg as? ExdDataConceptConfigurationMesg ?: ExdDataConceptConfigurationMesg(mesg))
+            268 -> _diveSummaryMesgs.add(mesg as? DiveSummaryMesg ?: DiveSummaryMesg(mesg))
+            289 -> _aadAccelFeaturesMesgs.add(mesg as? AadAccelFeaturesMesg ?: AadAccelFeaturesMesg(mesg))
+            78 -> _hrvMesgs.add(mesg as? HrvMesg ?: HrvMesg(mesg))
+            290 -> _beatIntervalsMesgs.add(mesg as? BeatIntervalsMesg ?: BeatIntervalsMesg(mesg))
+            370 -> _hrvStatusSummaryMesgs.add(mesg as? HrvStatusSummaryMesg ?: HrvStatusSummaryMesg(mesg))
+            371 -> _hrvValueMesgs.add(mesg as? HrvValueMesg ?: HrvValueMesg(mesg))
+            372 -> _rawBbiMesgs.add(mesg as? RawBbiMesg ?: RawBbiMesg(mesg))
+            297 -> _respirationRateMesgs.add(mesg as? RespirationRateMesg ?: RespirationRateMesg(mesg))
+            387 -> _chronoShotSessionMesgs.add(mesg as? ChronoShotSessionMesg ?: ChronoShotSessionMesg(mesg))
+            388 -> _chronoShotDataMesgs.add(mesg as? ChronoShotDataMesg ?: ChronoShotDataMesg(mesg))
+            319 -> _tankUpdateMesgs.add(mesg as? TankUpdateMesg ?: TankUpdateMesg(mesg))
+            323 -> _tankSummaryMesgs.add(mesg as? TankSummaryMesg ?: TankSummaryMesg(mesg))
+            346 -> _sleepAssessmentMesgs.add(mesg as? SleepAssessmentMesg ?: SleepAssessmentMesg(mesg))
+            470 -> _sleepDisruptionSeverityPeriodMesgs.add(mesg as? SleepDisruptionSeverityPeriodMesg ?: SleepDisruptionSeverityPeriodMesg(mesg))
+            471 -> _sleepDisruptionOvernightSeverityMesgs.add(mesg as? SleepDisruptionOvernightSeverityMesg ?: SleepDisruptionOvernightSeverityMesg(mesg))
+            412 -> _napEventMesgs.add(mesg as? NapEventMesg ?: NapEventMesg(mesg))
+            398 -> _skinTempOvernightMesgs.add(mesg as? SkinTempOvernightMesg ?: SkinTempOvernightMesg(mesg))
+            105 -> _padMesgs.add(mesg as? PadMesg ?: PadMesg(mesg))
+            else -> _unknownMesgs.add(mesg)
         }
+    }
+
+    internal fun addDeveloperFieldDescriptions(descriptions: List<DeveloperFieldDescription>) {
+        _developerFieldDescriptions.addAll(descriptions)
     }
 
     private val allLists: List<List<Mesg>>
         get() = listOf(
-            fileIdMesgs,
-            fileCreatorMesgs,
-            timestampCorrelationMesgs,
-            softwareMesgs,
-            slaveDeviceMesgs,
-            capabilitiesMesgs,
-            fileCapabilitiesMesgs,
-            mesgCapabilitiesMesgs,
-            fieldCapabilitiesMesgs,
-            deviceSettingsMesgs,
-            userProfileMesgs,
-            hrmProfileMesgs,
-            sdmProfileMesgs,
-            bikeProfileMesgs,
-            connectivityMesgs,
-            watchfaceSettingsMesgs,
-            ohrSettingsMesgs,
-            timeInZoneMesgs,
-            zonesTargetMesgs,
-            sportMesgs,
-            hrZoneMesgs,
-            speedZoneMesgs,
-            cadenceZoneMesgs,
-            powerZoneMesgs,
-            metZoneMesgs,
-            trainingSettingsMesgs,
-            diveSettingsMesgs,
-            diveAlarmMesgs,
-            diveApneaAlarmMesgs,
-            diveGasMesgs,
-            goalMesgs,
-            activityMesgs,
-            sessionMesgs,
-            lapMesgs,
-            lengthMesgs,
-            recordMesgs,
-            eventMesgs,
-            deviceInfoMesgs,
-            deviceAuxBatteryInfoMesgs,
-            trainingFileMesgs,
-            weatherConditionsMesgs,
-            weatherAlertMesgs,
-            gpsMetadataMesgs,
-            cameraEventMesgs,
-            gyroscopeDataMesgs,
-            accelerometerDataMesgs,
-            magnetometerDataMesgs,
-            barometerDataMesgs,
-            threeDSensorCalibrationMesgs,
-            oneDSensorCalibrationMesgs,
-            videoFrameMesgs,
-            obdiiDataMesgs,
-            nmeaSentenceMesgs,
-            aviationAttitudeMesgs,
-            videoMesgs,
-            videoTitleMesgs,
-            videoDescriptionMesgs,
-            videoClipMesgs,
-            setMesgs,
-            jumpMesgs,
-            splitMesgs,
-            splitSummaryMesgs,
-            climbProMesgs,
-            fieldDescriptionMesgs,
-            developerDataIdMesgs,
-            courseMesgs,
-            coursePointMesgs,
-            segmentIdMesgs,
-            segmentLeaderboardEntryMesgs,
-            segmentPointMesgs,
-            segmentLapMesgs,
-            segmentFileMesgs,
-            workoutMesgs,
-            workoutSessionMesgs,
-            workoutStepMesgs,
-            exerciseTitleMesgs,
-            scheduleMesgs,
-            totalsMesgs,
-            weightScaleMesgs,
-            bloodPressureMesgs,
-            monitoringInfoMesgs,
-            monitoringMesgs,
-            monitoringHrDataMesgs,
-            spo2DataMesgs,
-            hrMesgs,
-            stressLevelMesgs,
-            maxMetDataMesgs,
-            hsaBodyBatteryDataMesgs,
-            hsaEventMesgs,
-            hsaAccelerometerDataMesgs,
-            hsaGyroscopeDataMesgs,
-            hsaStepDataMesgs,
-            hsaSpo2DataMesgs,
-            hsaStressDataMesgs,
-            hsaRespirationDataMesgs,
-            hsaHeartRateDataMesgs,
-            hsaConfigurationDataMesgs,
-            hsaWristTemperatureDataMesgs,
-            memoGlobMesgs,
-            sleepLevelMesgs,
-            antChannelIdMesgs,
-            antRxMesgs,
-            antTxMesgs,
-            exdScreenConfigurationMesgs,
-            exdDataFieldConfigurationMesgs,
-            exdDataConceptConfigurationMesgs,
-            diveSummaryMesgs,
-            aadAccelFeaturesMesgs,
-            hrvMesgs,
-            beatIntervalsMesgs,
-            hrvStatusSummaryMesgs,
-            hrvValueMesgs,
-            rawBbiMesgs,
-            respirationRateMesgs,
-            chronoShotSessionMesgs,
-            chronoShotDataMesgs,
-            tankUpdateMesgs,
-            tankSummaryMesgs,
-            sleepAssessmentMesgs,
-            sleepDisruptionSeverityPeriodMesgs,
-            sleepDisruptionOvernightSeverityMesgs,
-            napEventMesgs,
-            skinTempOvernightMesgs,
-            padMesgs,
-            unknownMesgs,
+            _fileIdMesgs,
+            _fileCreatorMesgs,
+            _timestampCorrelationMesgs,
+            _softwareMesgs,
+            _slaveDeviceMesgs,
+            _capabilitiesMesgs,
+            _fileCapabilitiesMesgs,
+            _mesgCapabilitiesMesgs,
+            _fieldCapabilitiesMesgs,
+            _deviceSettingsMesgs,
+            _userProfileMesgs,
+            _hrmProfileMesgs,
+            _sdmProfileMesgs,
+            _bikeProfileMesgs,
+            _connectivityMesgs,
+            _watchfaceSettingsMesgs,
+            _ohrSettingsMesgs,
+            _timeInZoneMesgs,
+            _zonesTargetMesgs,
+            _sportMesgs,
+            _hrZoneMesgs,
+            _speedZoneMesgs,
+            _cadenceZoneMesgs,
+            _powerZoneMesgs,
+            _metZoneMesgs,
+            _trainingSettingsMesgs,
+            _diveSettingsMesgs,
+            _diveAlarmMesgs,
+            _diveApneaAlarmMesgs,
+            _diveGasMesgs,
+            _goalMesgs,
+            _activityMesgs,
+            _sessionMesgs,
+            _lapMesgs,
+            _lengthMesgs,
+            _recordMesgs,
+            _eventMesgs,
+            _deviceInfoMesgs,
+            _deviceAuxBatteryInfoMesgs,
+            _trainingFileMesgs,
+            _weatherConditionsMesgs,
+            _weatherAlertMesgs,
+            _gpsMetadataMesgs,
+            _cameraEventMesgs,
+            _gyroscopeDataMesgs,
+            _accelerometerDataMesgs,
+            _magnetometerDataMesgs,
+            _barometerDataMesgs,
+            _threeDSensorCalibrationMesgs,
+            _oneDSensorCalibrationMesgs,
+            _videoFrameMesgs,
+            _obdiiDataMesgs,
+            _nmeaSentenceMesgs,
+            _aviationAttitudeMesgs,
+            _videoMesgs,
+            _videoTitleMesgs,
+            _videoDescriptionMesgs,
+            _videoClipMesgs,
+            _setMesgs,
+            _jumpMesgs,
+            _splitMesgs,
+            _splitSummaryMesgs,
+            _climbProMesgs,
+            _fieldDescriptionMesgs,
+            _developerDataIdMesgs,
+            _courseMesgs,
+            _coursePointMesgs,
+            _segmentIdMesgs,
+            _segmentLeaderboardEntryMesgs,
+            _segmentPointMesgs,
+            _segmentLapMesgs,
+            _segmentFileMesgs,
+            _workoutMesgs,
+            _workoutSessionMesgs,
+            _workoutStepMesgs,
+            _exerciseTitleMesgs,
+            _scheduleMesgs,
+            _totalsMesgs,
+            _weightScaleMesgs,
+            _bloodPressureMesgs,
+            _monitoringInfoMesgs,
+            _monitoringMesgs,
+            _monitoringHrDataMesgs,
+            _spo2DataMesgs,
+            _hrMesgs,
+            _stressLevelMesgs,
+            _maxMetDataMesgs,
+            _hsaBodyBatteryDataMesgs,
+            _hsaEventMesgs,
+            _hsaAccelerometerDataMesgs,
+            _hsaGyroscopeDataMesgs,
+            _hsaStepDataMesgs,
+            _hsaSpo2DataMesgs,
+            _hsaStressDataMesgs,
+            _hsaRespirationDataMesgs,
+            _hsaHeartRateDataMesgs,
+            _hsaConfigurationDataMesgs,
+            _hsaWristTemperatureDataMesgs,
+            _memoGlobMesgs,
+            _sleepLevelMesgs,
+            _antChannelIdMesgs,
+            _antRxMesgs,
+            _antTxMesgs,
+            _exdScreenConfigurationMesgs,
+            _exdDataFieldConfigurationMesgs,
+            _exdDataConceptConfigurationMesgs,
+            _diveSummaryMesgs,
+            _aadAccelFeaturesMesgs,
+            _hrvMesgs,
+            _beatIntervalsMesgs,
+            _hrvStatusSummaryMesgs,
+            _hrvValueMesgs,
+            _rawBbiMesgs,
+            _respirationRateMesgs,
+            _chronoShotSessionMesgs,
+            _chronoShotDataMesgs,
+            _tankUpdateMesgs,
+            _tankSummaryMesgs,
+            _sleepAssessmentMesgs,
+            _sleepDisruptionSeverityPeriodMesgs,
+            _sleepDisruptionOvernightSeverityMesgs,
+            _napEventMesgs,
+            _skinTempOvernightMesgs,
+            _padMesgs,
+            _unknownMesgs,
         )
 
     /** Total number of messages decoded, across every type. */

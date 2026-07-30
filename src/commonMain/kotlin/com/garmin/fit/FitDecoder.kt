@@ -25,6 +25,12 @@ package com.garmin.fit
  * usually still holds most of an activity. Neither does [read], which reports
  * through its return value. Only [asSequence] throws, having no place to carry
  * an error.
+ *
+ * "Never throws" means no [Exception] escapes. A JVM [Error] — an
+ * `OutOfMemoryError`, a `StackOverflowError` — does propagate: those say the
+ * runtime is out of resources, not that the file is malformed, and swallowing
+ * one into [DecodeResult.errors] would report a broken process as a corrupt
+ * activity while leaving the caller to run on in an unusable VM.
  */
 public class FitDecoder(
     private val bytes: ByteArray,
@@ -32,26 +38,65 @@ public class FitDecoder(
     /** True when the input opens with a plausible FIT header. */
     public fun isFit(): Boolean = isFit(bytes)
 
-    /** True when every chained file's header CRC and file CRC check out. */
+    /**
+     * True when every chained file's header CRC and file CRC check out.
+     *
+     * The header CRC lives in the 14-byte header form only, and even there a
+     * producer may leave it at 0x0000 to mean "not computed", which the protocol
+     * allows and this accepts. Anything else has to match the CRC over the first
+     * 12 bytes. The 12-byte header form carries no header CRC at all.
+     */
     public fun checkIntegrity(): Boolean {
         if (!isFit()) return false
         return try {
+            if (!headerCrcsAreValid()) return false
             val cursor = MesgCursor(ByteReader(bytes), DecodeOptions(mode = DecodeMode.NORMAL))
             while (cursor.hasNext()) cursor.next()
             true
         } catch (_: FitException) {
             false
-        } catch (_: Throwable) {
+        } catch (_: Exception) {
             // Same safety net as decode(): an integrity check is a question, not
-            // an operation that may fail.
+            // an operation that may fail. An Error still propagates.
             false
         }
     }
 
     /**
+     * Checks the header CRC of every file in the stream.
+     *
+     * Walks the chain by itself rather than going through [MesgCursor], which
+     * reports only what it reads past the header. A length that does not add up
+     * ends the walk without a verdict: the record loop in [checkIntegrity] is
+     * what reports a truncated or overlong file, and reporting it twice would
+     * hide the more precise message.
+     */
+    private fun headerCrcsAreValid(): Boolean {
+        var offset = 0
+        while (offset < bytes.size) {
+            if (bytes.size - offset < Fit.HEADER_WITHOUT_CRC_SIZE) return false
+
+            val header = FileHeader.read(ByteReader(bytes, offset))
+            if (!header.isValid) return false
+
+            // 0x0000 is how a producer says "header CRC not filled in".
+            if (header.hasCrc && header.headerCrc != UNSET_HEADER_CRC) {
+                val computed = Crc.calculate(bytes, offset, offset + Fit.HEADER_WITHOUT_CRC_SIZE)
+                if (computed != header.headerCrc) return false
+            }
+
+            val next = offset + header.headerSize + header.dataSize.toInt() + Fit.CRC_SIZE
+            if (next <= offset || next > bytes.size) return true
+            offset = next
+        }
+        return true
+    }
+
+    /**
      * Decodes the whole input.
      *
-     * Never throws: problems come back in [DecodeResult.errors].
+     * Never throws an [Exception]: problems come back in [DecodeResult.errors].
+     * A JVM [Error] propagates — see the class documentation.
      */
     public fun decode(options: DecodeOptions = DecodeOptions()): DecodeResult {
         val messages = FitMessages()
@@ -70,14 +115,16 @@ public class FitDecoder(
             errors.add(FitError(e))
         } catch (e: FitException) {
             errors.add(FitError(e.message ?: "decode error", -1, e))
-        } catch (e: Throwable) {
+        } catch (e: Exception) {
             // Last-resort net. Malformed input is supposed to surface as a
             // FitFormatException, but decode() promises never to throw, so an
             // unforeseen failure becomes an error entry rather than escaping.
+            // Deliberately Exception and not Throwable: an Error means the VM is
+            // in trouble, which is not something a FitError can describe.
             errors.add(FitError(unexpectedMessage(e), -1, e))
         } finally {
             profileVersion = cursor.profileVersion
-            messages.developerFieldDescriptions.addAll(cursor.developerData.fieldDescriptions)
+            messages.addDeveloperFieldDescriptions(cursor.developerData.fieldDescriptions)
         }
 
         if (options.mergeHeartRates && options.expandComponents) {
@@ -92,8 +139,9 @@ public class FitDecoder(
      *
      * Nothing is retained, so this is the entry point for files too large to
      * hold decoded in memory. Returns the errors that stopped the decode, if
-     * any: like [decode], it never throws on malformed input. An exception
-     * raised by [onMesg] itself does propagate.
+     * any: like [decode], it never throws an [Exception] on malformed input. An
+     * exception raised by [onMesg] itself does propagate, and so does an
+     * [Error] from either side.
      */
     public fun read(options: DecodeOptions = DecodeOptions(), onMesg: (Mesg) -> Unit): List<FitError> {
         val errors = mutableListOf<FitError>()
@@ -110,7 +158,7 @@ public class FitDecoder(
             } catch (e: FitException) {
                 errors.add(FitError(e.message ?: "decode error", -1, e))
                 break
-            } catch (e: Throwable) {
+            } catch (e: Exception) {
                 // See decode(): anything unforeseen is reported, not thrown.
                 errors.add(FitError(unexpectedMessage(e), -1, e))
                 break
@@ -139,10 +187,13 @@ public class FitDecoder(
                 header.isValid && bytes.size >= header.headerSize + header.dataSize.toInt()
             } catch (_: FitException) {
                 false
-            } catch (_: Throwable) {
+            } catch (_: Exception) {
                 false
             }
         }
+
+        /** A 14-byte header whose CRC field is zero is one that never computed it. */
+        private val UNSET_HEADER_CRC: UShort = 0u
 
         /** Describes an exception the decoder was not expecting to see at all. */
         private fun unexpectedMessage(e: Throwable): String {

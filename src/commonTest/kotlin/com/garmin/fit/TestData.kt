@@ -38,6 +38,36 @@ internal object TestData {
         it[it.size - 1] = (it[it.size - 1] + 1).toByte()
     }
 
+    /**
+     * [fitFileShort] with its *header* CRC corrupted and its file CRC put back.
+     *
+     * Recomputing the trailing CRC matters: it covers the header too, so a file
+     * with only the header CRC touched would otherwise fail on the file CRC and
+     * prove nothing about the header check.
+     */
+    val fitFileShortInvalidHeaderCrc: ByteArray = withFileCrc(
+        fitFileShort.copyOf().also { it[12] = (it[12] + 1).toByte() },
+    )
+
+    /** [fitFileShort] with an unfilled (0x0000) header CRC, which FIT allows. */
+    val fitFileShortUnsetHeaderCrc: ByteArray = withFileCrc(
+        fitFileShort.copyOf().also { it[12] = 0; it[13] = 0 },
+    )
+
+    /** [fitFileShort] rewritten with the 12-byte header form, which has no header CRC. */
+    val fitFileShortShortHeader: ByteArray = withFileCrc(
+        (fitFileShort.copyOfRange(0, 12) + fitFileShort.copyOfRange(14, fitFileShort.size))
+            .also { it[0] = 12 },
+    )
+
+    /** Replaces the last two bytes of [bytes] with the CRC over everything before them. */
+    private fun withFileCrc(bytes: ByteArray): ByteArray {
+        val crc = Crc.calculate(bytes, 0, bytes.size - Fit.CRC_SIZE).toInt()
+        bytes[bytes.size - 2] = (crc and 0xFF).toByte()
+        bytes[bytes.size - 1] = ((crc shr 8) and 0xFF).toByte()
+        return bytes
+    }
+
     /** The records of [fitFileShort] with no header and no CRC. */
     val fitFileShortDataOnly: ByteArray = fitFileShort.copyOfRange(14, fitFileShort.size - 2)
 

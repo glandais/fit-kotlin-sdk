@@ -102,6 +102,28 @@ class FactoryTests {
         assertEquals(RecordMesg.TOTAL_CYCLES_FIELD_NUM, cycles.components[0].fieldNum)
     }
 
+    /**
+     * The profile version is packed as `major * 1000 + minor`, not `major * 100`.
+     * The minor number runs past 100 — 21.205 here — so a factor of 100 would
+     * fold it into the major version and make 21.205 indistinguishable from
+     * 23.5, and disagree with what the encoder stamps into every file header.
+     */
+    @Test
+    fun theProfileVersionIsScaledTheSameWayTheFileHeaderScalesIt() {
+        assertEquals(Fit.PROFILE_VERSION, Profile.VERSION)
+        assertEquals(
+            (Profile.VERSION_MAJOR * Fit.PROFILE_VERSION_SCALE + Profile.VERSION_MINOR).toUShort(),
+            Profile.VERSION,
+        )
+        assertEquals(Fit.PROFILE_MAJOR_VERSION, Profile.VERSION_MAJOR)
+        assertEquals(Fit.PROFILE_MINOR_VERSION, Profile.VERSION_MINOR)
+
+        // A profile whose minor number exceeds 99 is exactly the case a factor
+        // of 100 would corrupt, and every FIT profile since 20.x is one.
+        assertTrue(Profile.VERSION_MINOR > 99)
+        assertEquals(Profile.VERSION_MAJOR, Profile.VERSION.toInt() / Fit.PROFILE_VERSION_SCALE)
+    }
+
     @Test
     fun mesgNumConstantsMatchTheGeneratedClasses() {
         assertEquals(Profile.MesgNum.FILE_ID, FileIdMesg().globalMesgNum)

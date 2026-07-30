@@ -60,4 +60,31 @@ class AccumulatorTests {
         assertEquals(100L, accumulator.accumulate(20u, 5u, 100, 16))
         assertEquals(110L, accumulator.accumulate(20u, 5u, 110, 16))
     }
+
+    /**
+     * Documents current behaviour rather than prescribing it: [Accumulator] has
+     * no notion of a component's invalid sentinel (all-ones for its bit width).
+     * [Mesg.expandComponents] only recognises invalidity *after* unscaling the
+     * accumulated result, to decide whether to store null in the destination
+     * field — the raw sentinel has already been folded into the running total by
+     * then. fit-python-sdk's `_expand_components` does the same (it calls
+     * `self._accumulator.accumulate(...)` before checking `raw_value ==
+     * invalid_value`), so this is a shared trait of the reference decoders, not
+     * a Kotlin-only bug. See concerns for why this is left untested-as-correct.
+     */
+    @Test
+    fun anInvalidComponentValueStillFeedsTheRunningTotal() {
+        val accumulator = Accumulator()
+        accumulator.create(0u, 0u, 100)
+
+        val bits = 8
+        val allOnes = (1L shl bits) - 1 // 255: the uint8 invalid sentinel.
+        val afterInvalid = accumulator.accumulate(0u, 0u, allOnes, bits)
+        assertEquals(255L, afterInvalid, "the accumulator has no concept of invalidity of its own")
+
+        // The next real sample's delta is computed against the sentinel just
+        // folded in, not against the last real sample (100).
+        val next = accumulator.accumulate(0u, 0u, 10, bits)
+        assertEquals(266L, next)
+    }
 }

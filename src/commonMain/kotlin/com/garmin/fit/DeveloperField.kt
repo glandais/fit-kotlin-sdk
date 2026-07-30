@@ -30,16 +30,29 @@ public class DeveloperField(
     override val offset: Double = Fit.FIELD_DEFAULT_OFFSET,
     /** Profile field this one shadows, when the description names one. */
     public val nativeFieldNum: UByte? = null,
-    /** Application UUID from the declaring `developer_data_id` message. */
-    public val applicationId: ByteArray? = null,
+    applicationId: ByteArray? = null,
 ) : FieldBase() {
+    // Copied in, and copied out again by the getter below. A ByteArray is
+    // mutable and has reference equality, so holding the caller's array would
+    // let whoever passed it rewrite this field's identity afterwards.
+    private val applicationIdBytes: ByteArray? = applicationId?.copyOf()
+
+    /**
+     * Application UUID from the declaring `developer_data_id` message.
+     *
+     * A fresh copy on every read: writing into what this returns changes
+     * nothing, because the UUID is what [key] identifies this field by and a
+     * field whose identity can be edited from outside is not an identity.
+     */
+    public val applicationId: ByteArray? get() = applicationIdBytes?.copyOf()
+
     /** Identity of this field across the file: application, index and number. */
-    public val key: DeveloperDataKey get() = DeveloperDataKey(applicationId?.toList(), developerDataIndex, fieldNum)
+    public val key: DeveloperDataKey
+        get() = DeveloperDataKey(applicationIdBytes?.toList(), developerDataIndex, fieldNum)
 
     /**
      * Copies the description and the values, sharing nothing mutable with
-     * [other] — the application UUID included, since a `ByteArray` handed out
-     * as-is would let a copy rewrite the original's identity.
+     * [other] — the application UUID included.
      */
     internal constructor(other: DeveloperField) : this(
         other.fieldName,
@@ -50,11 +63,24 @@ public class DeveloperField(
         other.scale,
         other.offset,
         other.nativeFieldNum,
-        other.applicationId?.copyOf(),
+        other.applicationIdBytes,
     ) {
         declaredTypeId = other.declaredTypeId
         values.addAll(other.values)
     }
+
+    /**
+     * Equality includes the declaring application, on top of what [FieldBase]
+     * compares: two files can both define field 0 under developer data index 0,
+     * and only the application UUID tells them apart.
+     */
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is DeveloperField) return false
+        return super.equals(other) && key == other.key
+    }
+
+    override fun hashCode(): Int = 31 * super.hashCode() + key.hashCode()
 
     override fun toString(): String = "$fieldName(dev #$developerDataIndex/$fieldNum)=$values"
 }

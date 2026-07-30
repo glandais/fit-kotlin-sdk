@@ -8,12 +8,15 @@
 package com.garmin.fit
 
 import com.garmin.fit.types.File
+import com.garmin.fit.types.FitBaseType
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
@@ -38,6 +41,56 @@ class DecoderTests {
         assertTrue(FitDecoder(TestData.fitFileShort).checkIntegrity())
         assertFalse(FitDecoder(TestData.fitFileShortInvalidCrc).checkIntegrity())
         assertFalse(FitDecoder(TestData.fitFileShortInvalidHeader).checkIntegrity())
+    }
+
+    /**
+     * The 14-byte header carries its own CRC over the first 12 bytes, and
+     * [FitDecoder.checkIntegrity] says it checks it. A file whose header CRC is
+     * wrong but whose file CRC is right would otherwise pass unremarked.
+     */
+    @Test
+    fun aWrongHeaderCrcFailsTheIntegrityCheck() {
+        assertFalse(FitDecoder(TestData.fitFileShortInvalidHeaderCrc).checkIntegrity())
+
+        // Only the header CRC is wrong: the records and the file CRC are intact,
+        // so decoding still yields the message. checkIntegrity is the stricter
+        // question, and the one that answers it.
+        val result = FitDecoder(TestData.fitFileShortInvalidHeaderCrc).decode()
+        assertTrue(result.isSuccess, "unexpected errors: ${result.errors}")
+        assertEquals(1, result.messages.fileIdMesgs.size)
+    }
+
+    /** 0x0000 is how a producer says it never computed a header CRC; FIT allows it. */
+    @Test
+    fun anUnsetHeaderCrcIsAccepted() {
+        assertTrue(FitDecoder(TestData.fitFileShortUnsetHeaderCrc).checkIntegrity())
+        assertTrue(FitDecoder(TestData.fitFileShortUnsetHeaderCrc).decode().isSuccess)
+    }
+
+    /** The 12-byte header form has no header CRC at all, which is not a failure. */
+    @Test
+    fun aTwelveByteHeaderHasNoHeaderCrcToCheck() {
+        val short = TestData.fitFileShortShortHeader
+        assertEquals(Fit.HEADER_WITHOUT_CRC_SIZE, FileHeader.read(ByteReader(short)).headerSize)
+        assertFalse(FileHeader.read(ByteReader(short)).hasCrc)
+
+        assertTrue(FitDecoder(short).isFit())
+        assertTrue(FitDecoder(short).checkIntegrity())
+        assertEquals(1, FitDecoder(short).decode().messages.fileIdMesgs.size)
+    }
+
+    /** Every file in a chain gets its header checked, not just the first. */
+    @Test
+    fun aBadHeaderCrcAnywhereInAChainIsCaught() {
+        assertFalse(
+            FitDecoder(TestData.fitFileShortInvalidHeaderCrc + TestData.fitFileShort).checkIntegrity(),
+            "a bad header CRC on the first file went unnoticed",
+        )
+        assertFalse(
+            FitDecoder(TestData.fitFileShort + TestData.fitFileShortInvalidHeaderCrc).checkIntegrity(),
+            "a bad header CRC on the second file went unnoticed",
+        )
+        assertTrue(FitDecoder(TestData.fitFileShort + TestData.fitFileShort).checkIntegrity())
     }
 
     @Test
@@ -168,10 +221,14 @@ class DecoderTests {
 
     /**
      * The contract the rest of the SDK is built on: whatever the bytes are, and
-     * whatever the options are, nothing escapes [FitDecoder.decode].
+     * whatever the options are, no [Exception] escapes [FitDecoder.decode].
+     *
+     * An [Error] is deliberately not caught here either — the decoder no longer
+     * swallows one, so letting it out of the test is the right outcome: it means
+     * the VM is in trouble, not that this file is malformed.
      */
     @Test
-    fun noThrowableEscapesOnArbitraryMalformedInput() {
+    fun noExceptionEscapesOnArbitraryMalformedInput() {
         val random = Random(20260730)
         val modes = listOf(DecodeMode.NORMAL, DecodeMode.SKIP_HEADER, DecodeMode.DATA_ONLY)
 
@@ -187,9 +244,27 @@ class DecoderTests {
                 FitDecoder(mutated).read(options) { }
                 FitDecoder(mutated).checkIntegrity()
                 FitDecoder(mutated).isFit()
-            } catch (e: Throwable) {
+            } catch (e: Exception) {
                 fail("${e::class.simpleName}: ${e.message} escaped on ${hex(mutated)} in ${options.mode}")
             }
+        }
+    }
+
+    /**
+     * The safety net is scoped to what a bad file can cause.
+     *
+     * A caller's own failure inside [FitDecoder.read] is not a file error and
+     * must come back out untouched, whether it is an [Exception] or an [Error].
+     * That is the same boundary the decoder's internal net now draws: it turns
+     * an unforeseen [Exception] into a [FitError] and lets an [Error] through.
+     */
+    @Test
+    fun theSafetyNetDoesNotSwallowTheCallersOwnFailures() {
+        assertFailsWith<IllegalStateException> {
+            FitDecoder(TestData.fitFileShort).read { error("the caller's own problem") }
+        }
+        assertFailsWith<OutOfMemoryError> {
+            FitDecoder(TestData.fitFileShort).read { throw OutOfMemoryError("not a decode error") }
         }
     }
 
@@ -274,5 +349,177 @@ class DecoderTests {
     fun aDecodedMessageHoldsOnlyThePopulatedFields() {
         val fileId = FitDecoder(TestData.fitFileShort).decode().messages.fileIdMesgs[0]
         assertEquals(4, fileId.fieldList.size)
+    }
+
+    // ---------------------------------------------------- low-level records
+
+    /** Replaces the last two bytes of [bytes] with the file CRC over the rest. */
+    private fun withFileCrc(bytes: ByteArray): ByteArray {
+        val crc = Crc.calculate(bytes, 0, bytes.size - Fit.CRC_SIZE)
+        bytes[bytes.size - 2] = (crc.toInt() and 0xFF).toByte()
+        bytes[bytes.size - 1] = ((crc.toInt() shr 8) and 0xFF).toByte()
+        return bytes
+    }
+
+    /** A minimal, otherwise well-formed file whose single record is [recordBytes]. */
+    private fun fileWithRecord(recordBytes: ByteArray): ByteArray {
+        val header = FileHeader(dataSize = recordBytes.size.toUInt())
+        header.updateCrc()
+        return withFileCrc(header.toByteArray() + recordBytes + ByteArray(Fit.CRC_SIZE))
+    }
+
+    /**
+     * A data record naming a local message number no definition has claimed —
+     * whether none was ever sent, or the file simply opens with a data record —
+     * is a format error, not a crash, and it must not derail messages already
+     * decoded before it.
+     */
+    @Test
+    fun aDataRecordForAnUndefinedLocalMessageIsReportedNotThrown() {
+        // Header byte 0x00: a plain data record for local message 0, which
+        // nothing has defined yet.
+        val bytes = fileWithRecord(TestData.bytes(0x00))
+
+        val result = FitDecoder(bytes).decode()
+        assertFalse(result.isSuccess)
+        assertEquals(1, result.errors.size)
+        assertTrue(result.errors[0].message.contains("local message"), result.errors[0].message)
+        assertEquals(0, result.mesgs.size)
+
+        // The rest of a longer file still comes back: a first, well-defined
+        // message is kept even though the second record fails.
+        val whole = TestData.fitFileShort
+        val truncatedThenBad = fileWithRecord(
+            whole.copyOfRange(14, whole.size - Fit.CRC_SIZE) + TestData.bytes(0x0F),
+        )
+        val partial = FitDecoder(truncatedThenBad).decode()
+        assertFalse(partial.isSuccess)
+        assertEquals(1, partial.messages.fileIdMesgs.size, "the message read before the bad record was lost")
+    }
+
+    /**
+     * Bit 7 of a record header marks a compressed-timestamp data record, a
+     * layout this SDK does not support. [MesgCursor] rejects it outright rather
+     * than misreading the following bytes as an ordinary record.
+     */
+    @Test
+    fun aCompressedTimestampHeaderIsRejected() {
+        val bytes = fileWithRecord(TestData.bytes(0x80))
+
+        val result = FitDecoder(bytes).decode()
+        assertFalse(result.isSuccess)
+        assertEquals(1, result.errors.size)
+        assertTrue(result.errors[0].message.contains("compressed"), result.errors[0].message)
+        assertEquals(0, result.mesgs.size)
+
+        // Every top bit set still reads as compressed, definition bit or not.
+        assertFalse(FitDecoder(fileWithRecord(TestData.bytes(0xFF))).decode().isSuccess)
+    }
+
+    /**
+     * A field definition whose declared size is not a whole multiple of its base
+     * type's width means the producer and the profile disagree about this field.
+     * [FieldBase.read] skips exactly that many bytes to keep the record aligned,
+     * so the field itself is dropped but every field after it decodes normally.
+     */
+    @Test
+    fun aFieldSizeThatIsNotAWholeMultipleOfItsBaseTypeIsSkippedWithoutDerailingTheRest() {
+        val definition = MesgDefinition(
+            localMesgNum = 0u,
+            globalMesgNum = 65280u, // an unknown message number, decoded generically
+            fieldDefinitions = listOf(
+                FieldDefinition(0u, 3, BaseType.UINT32), // 3 bytes: not a multiple of 4
+                FieldDefinition(1u, 4, BaseType.UINT32),
+            ),
+        )
+        val defWriter = ByteWriter()
+        definition.write(defWriter)
+
+        val dataWriter = ByteWriter()
+        dataWriter.writeByte(0u) // data record header, local message 0
+        dataWriter.writeBytes(TestData.bytes(0x01, 0x02, 0x03)) // misaligned field: 3 garbage bytes
+        dataWriter.writeUInt(0x12345678u) // well-formed field right after it
+
+        val bytes = fileWithRecord(defWriter.toByteArray() + dataWriter.toByteArray())
+
+        val result = FitDecoder(bytes).decode(DecodeOptions(includeUnknownData = true))
+        assertTrue(result.isSuccess, "unexpected errors: ${result.errors}")
+
+        val mesg = result.messages.unknownMesgs.single()
+        assertNull(mesg.getField(0u), "the misaligned field must not survive decoding")
+        assertEquals(0x12345678u, mesg.getField(1u)?.getValue(), "the field after it must decode intact")
+    }
+
+    // ------------------------------------------------------ developer data
+
+    private fun developerDataId(uuidByte: Int) = DeveloperDataIdMesg().apply {
+        developerDataIndex = 0u
+        applicationId = List(16) { uuidByte.toUByte() }
+    }
+
+    private fun fieldDescription(name: String) = FieldDescriptionMesg().apply {
+        developerDataIndex = 0u
+        fieldDefinitionNumber = 0u
+        fitBaseTypeId = FitBaseType.UINT8
+        fieldName = listOf(name)
+    }
+
+    /**
+     * Nothing stops two applications in one stream from each claiming developer
+     * data index 0, which is exactly why [DeveloperDataKey] carries the
+     * application UUID. The lookup has to carry it too: keyed on the index
+     * alone, the second application's records would be read under the first
+     * one's declarations and come out with the wrong name, units and scale.
+     */
+    @Test
+    fun aDeveloperFieldDeclarationBelongsToTheApplicationThatMadeIt() {
+        val lookup = DeveloperDataLookup()
+
+        lookup.addDeveloperDataId(developerDataId(1))
+        assertNotNull(lookup.addFieldDescription(fieldDescription("doughnuts_earned")))
+        assertEquals("doughnuts_earned", lookup.getFieldDescription(0u, 0u)?.fieldName)
+
+        // A second application takes over index 0 and declares nothing.
+        lookup.addDeveloperDataId(developerDataId(2))
+        assertNull(
+            lookup.getFieldDescription(0u, 0u),
+            "the first application's declaration described the second application's field",
+        )
+
+        // Its own declaration is found, and is a different one.
+        assertNotNull(lookup.addFieldDescription(fieldDescription("calories_burned")))
+        assertEquals("calories_burned", lookup.getFieldDescription(0u, 0u)?.fieldName)
+
+        // Both declarations were kept: the file did declare two fields.
+        assertEquals(2, lookup.fieldDescriptions.size)
+        assertNotEquals(lookup.fieldDescriptions[0].key, lookup.fieldDescriptions[1].key)
+    }
+
+    /** With no `developer_data_id` at all the key is still consistent both ways. */
+    @Test
+    fun anUnclaimedDeveloperDataIndexStillResolvesItsOwnDeclarations() {
+        val lookup = DeveloperDataLookup()
+        assertNotNull(lookup.addFieldDescription(fieldDescription("undeclared_app")))
+
+        val description = lookup.getFieldDescription(0u, 0u)
+        assertNotNull(description)
+        assertEquals("undeclared_app", description.fieldName)
+        assertNull(description.applicationId)
+    }
+
+    /**
+     * The format says `developer_data_id` comes first, and a file that puts it
+     * after its `field_description` used to decode anyway. Keying the lookup on
+     * the application must not cost that: the declaration was registered under
+     * no application, and it is still the only candidate for the index.
+     */
+    @Test
+    fun aDeclarationMadeBeforeItsApplicationIdStillResolves() {
+        val lookup = DeveloperDataLookup()
+
+        assertNotNull(lookup.addFieldDescription(fieldDescription("doughnuts_earned")))
+        lookup.addDeveloperDataId(developerDataId(1))
+
+        assertEquals("doughnuts_earned", lookup.getFieldDescription(0u, 0u)?.fieldName)
     }
 }

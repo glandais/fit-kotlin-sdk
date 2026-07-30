@@ -20,8 +20,15 @@ public object Profile {
     public const val VERSION_MINOR: Int = 205
     public const val VERSION_BUILD: Int = 0
 
-    /** Profile version as encoded in the FIT file header. */
-    public val VERSION: UShort = (VERSION_MAJOR * 100 + VERSION_MINOR).toUShort()
+    /**
+     * Profile version as encoded in the FIT file header.
+     *
+     * The minor version is scaled by [Fit.PROFILE_VERSION_SCALE], not by 100:
+     * the profile's minor number runs past 100 (21.205 here), so a factor of 100
+     * would fold it into the major version and make 21.205 indistinguishable
+     * from 23.5. Always equal to [Fit.PROFILE_VERSION].
+     */
+    public val VERSION: UShort = (VERSION_MAJOR * Fit.PROFILE_VERSION_SCALE + VERSION_MINOR).toUShort()
 
     /** Global message numbers, as used by [Mesg.globalMesgNum]. */
     public object MesgNum {

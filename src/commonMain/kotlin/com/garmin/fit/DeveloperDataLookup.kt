@@ -22,13 +22,34 @@ package com.garmin.fit
  */
 public class DeveloperDataLookup {
     private val applications = HashMap<Int, DeveloperDataIdMesg>()
-    private val descriptions = HashMap<Int, DeveloperFieldDescription>()
+    private val descriptions = HashMap<DeveloperDataKey, DeveloperFieldDescription>()
+
+    private val _fieldDescriptions: MutableList<DeveloperFieldDescription> = mutableListOf()
 
     /** Every declaration seen so far, in the order they were met. */
-    public val fieldDescriptions: MutableList<DeveloperFieldDescription> = mutableListOf()
+    public val fieldDescriptions: List<DeveloperFieldDescription> get() = _fieldDescriptions
 
-    private fun key(developerDataIndex: UByte, fieldNum: UByte): Int =
-        (developerDataIndex.toInt() shl 8) or fieldNum.toInt()
+    /**
+     * The lookup key for a field of the application currently holding
+     * [developerDataIndex].
+     *
+     * The index alone is not enough, as [DeveloperDataKey] says: nothing stops
+     * two applications in one stream from each claiming index 0 in their own
+     * `developer_data_id` message, and reading the second one's records against
+     * the first one's declarations would silently mislabel and misscale them.
+     * The application UUID is not on the wire in a data record, so it is taken
+     * from whichever `developer_data_id` last claimed the index — the same
+     * application the declaration was registered under.
+     */
+    private fun key(developerDataIndex: UByte, fieldNum: UByte): DeveloperDataKey =
+        DeveloperDataKey(
+            applicationIdOf(developerDataIndex),
+            developerDataIndex,
+            fieldNum,
+        )
+
+    private fun applicationIdOf(developerDataIndex: UByte): List<Byte>? =
+        applications[developerDataIndex.toInt()]?.applicationId?.map { (it ?: 0u).toByte() }
 
     public fun addDeveloperDataId(mesg: DeveloperDataIdMesg) {
         val index = mesg.developerDataIndex ?: return
@@ -60,13 +81,22 @@ public class DeveloperDataLookup {
             nativeFieldNum = mesg.nativeFieldNum,
         )
 
-        descriptions[key(index, fieldNum)] = description
-        fieldDescriptions.add(description)
+        // Keyed by the description's own identity rather than by a fresh lookup,
+        // so the two can never disagree about which application this belongs to.
+        descriptions[description.key] = description
+        _fieldDescriptions.add(description)
         return description
     }
 
     public fun getFieldDescription(developerDataIndex: UByte, fieldNum: UByte): DeveloperFieldDescription? =
         descriptions[key(developerDataIndex, fieldNum)]
+            // A file that described a field before the `developer_data_id`
+            // claiming its index registered it under no application at all. That
+            // ordering is not what the format prescribes, but it used to decode,
+            // and the declaration is still the only candidate — the lookup above
+            // has already ruled out any application having declared this field
+            // itself.
+            ?: descriptions[DeveloperDataKey(null, developerDataIndex, fieldNum)]
 
     /** A fresh field for [definition], or null when nothing has declared it. */
     public fun createField(definition: DeveloperFieldDefinition): DeveloperField? =

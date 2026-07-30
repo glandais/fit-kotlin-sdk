@@ -41,6 +41,23 @@ class EncoderTests {
         assertEquals(Fit.HEADER_WITH_CRC_SIZE, header.headerSize)
         assertEquals(bytes.size - Fit.HEADER_WITH_CRC_SIZE - Fit.CRC_SIZE, header.dataSize.toInt())
         assertEquals(Fit.PROFILE_VERSION, header.profileVersion)
+        // The generated profile constant and the protocol constant are one number.
+        assertEquals(Profile.VERSION, header.profileVersion)
+    }
+
+    /** [FitEncoder.close] fills in the header CRC, so the file passes the header check too. */
+    @Test
+    fun anEncodedFileCarriesAValidHeaderCrc() {
+        val bytes = encodeFit { write(fileId()) }
+        val header = FileHeader.read(ByteReader(bytes))
+
+        assertTrue(header.hasCrc)
+        assertEquals(Crc.calculate(bytes, 0, Fit.HEADER_WITHOUT_CRC_SIZE), header.headerCrc)
+        assertTrue(FitDecoder(bytes).checkIntegrity())
+
+        // Corrupting a header byte without touching the CRC breaks the check.
+        val tampered = bytes.copyOf().also { it[1] = (it[1] + 1).toByte() }
+        assertFalse(FitDecoder(tampered).checkIntegrity())
     }
 
     @Test

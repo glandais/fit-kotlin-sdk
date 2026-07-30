@@ -282,16 +282,35 @@ public open class Mesg(
 
     // ----------------------------------------------------------------- write
 
-    /** Writes one data record laid out by [definition]. */
+    /**
+     * Writes one data record laid out by [definition].
+     *
+     * Every field the definition lists must be present here. A definition record
+     * is a promise about the exact byte layout of the records that follow it, so
+     * skipping a field the definition declared would not lose that field — it
+     * would shift every byte after it, turning the rest of the record, and every
+     * record read under the same local message number, into garbage no decoder
+     * can detect. Refusing to write is the only safe answer.
+     */
     internal fun write(writer: ByteWriter, definition: MesgDefinition) {
         writer.writeByte((definition.localMesgNum.toInt() and Fit.HDR_TYPE_MASK).toUByte())
         for (fieldDefinition in definition.fieldDefinitions) {
-            getField(fieldDefinition.num)?.write(writer, definition.endianness)
+            val field = getField(fieldDefinition.num)
+                ?: throw FitFieldException(
+                    "$mesgName has no field ${fieldDefinition.num}, which the message definition for local " +
+                        "message ${definition.localMesgNum} declares as ${fieldDefinition.size} byte(s)",
+                )
+            field.write(writer, definition.endianness)
         }
         for (devDefinition in definition.developerFieldDefinitions) {
-            developerFieldMap.values
+            val devField = developerFieldMap.values
                 .firstOrNull { it.fieldNum == devDefinition.num && it.developerDataIndex == devDefinition.developerDataIndex }
-                ?.write(writer, definition.endianness)
+                ?: throw FitFieldException(
+                    "$mesgName has no developer field ${devDefinition.developerDataIndex}/${devDefinition.num}, " +
+                        "which the message definition for local message ${definition.localMesgNum} declares as " +
+                        "${devDefinition.size} byte(s)",
+                )
+            devField.write(writer, definition.endianness)
         }
     }
 

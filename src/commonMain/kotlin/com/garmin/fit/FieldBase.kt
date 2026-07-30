@@ -134,12 +134,36 @@ public abstract class FieldBase {
             // Integral base types round rather than truncate, so that a value
             // whose scaled form lands on x.9999 does not lose a unit.
             if (!type.isFloatingPoint) raw = kotlin.math.round(raw)
-            values[index] = type.correctRangeAndType(raw)
+            values[index] = boxed(type, subField, raw)
             return
         }
 
         // No scaling: keep the caller's value so 64-bit integers stay bit-exact.
-        values[index] = type.correctRangeAndType(value)
+        values[index] = boxed(type, subField, value)
+    }
+
+    /**
+     * Boxes [value] as [type], the field's own base type, after range-checking it
+     * against the active subfield's.
+     *
+     * The two are not always the same width: `event.data` is a uint32 whose
+     * `course_point_index` subfield is a uint16 and whose `timer_trigger`
+     * subfield is an enum. The *storage* has to stay the field's own type, since
+     * that is the width the field definition declares and the width [write]
+     * emits — boxing a uint16 into a uint32 field would write two bytes where
+     * the definition promised four and shift the rest of the record.
+     *
+     * But the *range* that means anything is the subfield's: [getValue] tests
+     * validity against it, so a value that overflows the subfield would be
+     * stored happily and then read back as null. Storing the field's invalid
+     * sentinel instead makes the round trip honest.
+     */
+    private fun boxed(type: BaseType, subField: SubField?, value: Any?): Any? {
+        val subType = subField?.baseType
+        if (subType != null && subType != type && subType != BaseType.STRING && subType.isInvalid(value)) {
+            return type.invalidValue()
+        }
+        return type.correctRangeAndType(value)
     }
 
     /** Appends a value with no scale or offset conversion. */
@@ -188,7 +212,13 @@ public abstract class FieldBase {
         if (type == BaseType.STRING) {
             val text = reader.readString(size)
             // One string field can carry several NUL-separated strings.
-            for (part in text.split('\u0000')) values.add(part)
+            val parts = text.split('\u0000')
+            // A string field of nothing but NULs is the invalid sentinel of its
+            // type, exactly as an all-0xFF numeric field is: dropping it keeps a
+            // blank string from reading as a value the producer never wrote.
+            // The Python and JavaScript SDKs drop it the same way.
+            if (parts.none { type.isValid(it) }) return
+            values.addAll(parts)
             return
         }
 
@@ -252,6 +282,12 @@ public abstract class FieldBase {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is FieldBase) return false
+        // A profile field and a developer field can carry the same number, the
+        // same base type and the same values and still be different things:
+        // field 0 of a `record` is `position_lat`, developer field 0 of the same
+        // record is whatever that file's field_description named. Comparing the
+        // runtime class keeps the two out of each other's equality classes.
+        if (this::class != other::class) return false
         return fieldNum == other.fieldNum &&
             baseType == other.baseType &&
             scale == other.scale &&
