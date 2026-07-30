@@ -270,4 +270,108 @@ class EncoderTests {
         }
         assertContentEquals(build(), build())
     }
+
+    private fun stiffnessDescription(): DeveloperFieldDescription = DeveloperFieldDescription(
+        applicationId = ByteArray(16) { it.toByte() },
+        applicationVersion = 3u,
+        developerDataIndex = 0u,
+        fieldDefinitionNumber = 5u,
+        fieldName = "leg_spring_stiffness",
+        baseType = BaseType.UINT16,
+        units = "kN/m",
+        scale = 10.0,
+    )
+
+    @Test
+    fun aRegisteredDeveloperFieldRoundTrips() {
+        val description = stiffnessDescription()
+        val bytes = encodeFit {
+            write(fileId())
+            registerDeveloperField(description)
+            write(
+                RecordMesg().apply {
+                    heartRate = 120u
+                    setDeveloperField(description.createField().apply { setValue(23.5) })
+                },
+            )
+        }
+
+        val result = FitDecoder(bytes).decode()
+        assertTrue(result.isSuccess, "unexpected errors: ${result.errors}")
+
+        // The declaration decodes back as it was registered...
+        val decoded = result.messages.developerFieldDescriptions.single()
+        assertEquals("leg_spring_stiffness", decoded.fieldName)
+        assertEquals(BaseType.UINT16, decoded.baseType)
+        assertEquals("kN/m", decoded.units)
+        assertEquals(10.0, decoded.scale)
+        assertContentEquals(description.applicationId, decoded.applicationId)
+        assertEquals(3u, decoded.applicationVersion)
+
+        // ...and gives the data record's extra bytes their meaning back.
+        val field = result.messages.recordMesgs.single().developerFieldList.single()
+        assertEquals("leg_spring_stiffness", field.fieldName)
+        assertEquals("kN/m", field.units)
+        assertEquals(23.5, field.getValue())
+    }
+
+    /** One `developer_data_id` claims the index; further fields only add descriptions. */
+    @Test
+    fun anApplicationAnnouncesItsIndexOnlyOnce() {
+        val first = stiffnessDescription()
+        val second = DeveloperFieldDescription(
+            applicationId = first.applicationId,
+            applicationVersion = 3u,
+            developerDataIndex = 0u,
+            fieldDefinitionNumber = 6u,
+            fieldName = "form_power",
+            baseType = BaseType.UINT16,
+            units = "watts",
+        )
+
+        val bytes = encodeFit {
+            write(fileId())
+            registerDeveloperField(first)
+            registerDeveloperField(second)
+        }
+
+        val result = FitDecoder(bytes).decode()
+        assertTrue(result.isSuccess, "unexpected errors: ${result.errors}")
+        assertEquals(1, result.messages.developerDataIdMesgs.size)
+        assertEquals(2, result.messages.fieldDescriptionMesgs.size)
+        assertEquals(2, result.messages.developerFieldDescriptions.size)
+    }
+
+    /** The decode → re-encode loop for developer fields, closed by hand. */
+    @Test
+    fun aDecodedDescriptionReRegistersIntoAReadableFile() {
+        val description = stiffnessDescription()
+        val original = encodeFit {
+            write(fileId())
+            registerDeveloperField(description)
+            write(
+                RecordMesg().apply {
+                    setDeveloperField(description.createField().apply { setValue(21.0) })
+                },
+            )
+        }
+        val firstPass = FitDecoder(original).decode()
+        assertTrue(firstPass.isSuccess)
+
+        val reEncoded = encodeFit {
+            write(fileId())
+            firstPass.messages.developerFieldDescriptions.forEach { registerDeveloperField(it) }
+            write(
+                RecordMesg().apply {
+                    firstPass.messages.recordMesgs.single().developerFieldList.forEach { setDeveloperField(DeveloperField(it)) }
+                },
+            )
+        }
+
+        val secondPass = FitDecoder(reEncoded).decode()
+        assertTrue(secondPass.isSuccess, "unexpected errors: ${secondPass.errors}")
+        val field = secondPass.messages.recordMesgs.single().developerFieldList.single()
+        assertEquals("leg_spring_stiffness", field.fieldName)
+        assertEquals(21.0, field.getValue())
+    }
 }

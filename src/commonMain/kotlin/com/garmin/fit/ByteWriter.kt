@@ -99,5 +99,13 @@ public class ByteWriter(initialCapacity: Int = 4096) {
         bytes.copyInto(buffer, startIndex)
     }
 
+    /**
+     * CRC of the bytes written so far, computed in place.
+     *
+     * Exists so [FitEncoder.close] can checksum the file without first copying
+     * it out — on a large activity the copy costs more than the CRC.
+     */
+    internal fun crc(): UShort = Crc.calculate(buffer, 0, size)
+
     public fun toByteArray(): ByteArray = buffer.copyOf(size)
 }

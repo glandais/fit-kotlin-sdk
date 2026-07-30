@@ -116,6 +116,12 @@ the file itself by a `developer_data_id` / `field_description` pair. The
 decoder surfaces them on `Mesg.developerFieldList`, and the declarations it met
 on `FitMessages.developerFieldDescriptions`.
 
+To write them, declare each field with `FitEncoder.registerDeveloperField`
+before the first message carrying it — the encoder emits the declaring message
+pair for you. `DeveloperFieldDescription.createField()` then makes a field to
+`setDeveloperField` on a message; re-registering the descriptions a decode
+returned re-encodes the same extension fields.
+
 ## Build and test
 
 ```sh

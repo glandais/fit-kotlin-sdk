@@ -11,6 +11,8 @@
 
 package com.garmin.fit
 
+import com.garmin.fit.types.FitBaseType
+
 /**
  * Writes FIT files.
  *
@@ -57,6 +59,9 @@ public class FitEncoder(
     private var nextLocalMesgNum = 0
     private var closed = false
 
+    /** (index, application) pairs whose `developer_data_id` is already in the file. */
+    private val announcedDeveloperIds = HashSet<Pair<UByte, List<Byte>?>>()
+
     init {
         // Reserve the header; its data size is only known at close().
         writer.writeBytes(ByteArray(Fit.HEADER_WITH_CRC_SIZE))
@@ -99,6 +104,51 @@ public class FitEncoder(
         return this
     }
 
+    /**
+     * Declares a developer field, writing the `developer_data_id` message that
+     * claims its index (once per application/index pair) followed by its
+     * `field_description` message.
+     *
+     * A data record can only carry a [DeveloperField] whose declaration precedes
+     * it in the file, so call this before writing the first message holding a
+     * field made from [description] — typically one obtained from
+     * [FitMessages.developerFieldDescriptions] after decoding, which closes the
+     * decode → re-encode loop, or built by hand alongside
+     * [DeveloperFieldDescription.createField].
+     *
+     * `field_description` stores scale and offset as single bytes; a
+     * [description] whose values do not fit those types (never the case for one
+     * produced by the decoder) is declared with them truncated.
+     */
+    public fun registerDeveloperField(description: DeveloperFieldDescription): FitEncoder {
+        check(!closed) { "this encoder is closed" }
+
+        val application = description.applicationId
+        if (announcedDeveloperIds.add(description.developerDataIndex to application?.toList())) {
+            write(
+                DeveloperDataIdMesg().apply {
+                    developerDataIndex = description.developerDataIndex
+                    application?.let { id -> applicationId = id.map { it.toUByte() } }
+                    description.applicationVersion?.let { applicationVersion = it }
+                },
+            )
+        }
+
+        write(
+            FieldDescriptionMesg().apply {
+                developerDataIndex = description.developerDataIndex
+                fieldDefinitionNumber = description.fieldDefinitionNumber
+                fitBaseTypeId = FitBaseType.fromValue(description.baseType.id)
+                fieldName = listOf(description.fieldName)
+                if (description.units.isNotEmpty()) units = listOf(description.units)
+                if (description.scale != Fit.FIELD_DEFAULT_SCALE) scale = description.scale.toInt().toUByte()
+                if (description.offset != Fit.FIELD_DEFAULT_OFFSET) offset = description.offset.toInt().toByte()
+                description.nativeFieldNum?.let { nativeFieldNum = it }
+            },
+        )
+        return this
+    }
+
     /** Writes a definition explicitly, claiming its local message number. */
     public fun write(mesgDefinition: MesgDefinition): FitEncoder {
         check(!closed) { "this encoder is closed" }
@@ -125,8 +175,7 @@ public class FitEncoder(
         header.updateCrc()
         writer.replaceRange(0, header.toByteArray())
 
-        val bytes = writer.toByteArray()
-        writer.writeUShort(Crc.calculate(bytes, 0, bytes.size))
+        writer.writeUShort(writer.crc())
         return writer.toByteArray()
     }
 
@@ -140,19 +189,9 @@ public class FitEncoder(
      */
     private fun localMesgNumFor(definition: MesgDefinition): UByte {
         for (i in localDefinitions.indices) {
-            val existing = localDefinitions[i] ?: continue
-            if (existing.globalMesgNum == definition.globalMesgNum && existing.hasSameLayout(
-                    MesgDefinition(
-                        existing.localMesgNum,
-                        definition.globalMesgNum,
-                        definition.endianness,
-                        definition.fieldDefinitions,
-                        definition.developerFieldDefinitions,
-                    ),
-                )
-            ) {
-                return i.toUByte()
-            }
+            // hasSameLayout ignores the local number, so the incoming definition
+            // can be compared directly against each slot, whatever it is bound to.
+            if (localDefinitions[i]?.hasSameLayout(definition) == true) return i.toUByte()
         }
 
         for (i in localDefinitions.indices) {
