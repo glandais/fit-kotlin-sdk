@@ -202,19 +202,29 @@ public enum class BaseType(
         /** The base type a field definition record's type byte denotes, if any. */
         public fun fromId(id: UByte): BaseType? = byId[id]
 
-        /** The base type that best represents an already-boxed Kotlin value. */
+        /**
+         * The base type that best represents an already-boxed Kotlin value.
+         *
+         * Kotlin/JS represents `Byte`, `Short`, `Int`, `Float` and `Double`
+         * alike, as JS numbers, so on that target each of their branches below
+         * matches any of the five and the first one decides. They are therefore
+         * ordered widest first: an ambiguous value is held losslessly as a
+         * `float64` rather than truncated into a byte. JVM and Wasm carry the
+         * declared type at runtime and keep picking it exactly. Unsigned types,
+         * `Long` and `String` are unambiguous everywhere.
+         */
         public fun of(value: Any?): BaseType? =
             when (value) {
                 is UByte, is Boolean -> UINT8
-                is Byte -> SINT8
                 is UShort -> UINT16
-                is Short -> SINT16
                 is UInt -> UINT32
-                is Int -> SINT32
                 is ULong -> UINT64
                 is Long -> SINT64
-                is Float -> FLOAT32
                 is Double -> FLOAT64
+                is Float -> FLOAT32
+                is Int -> SINT32
+                is Short -> SINT16
+                is Byte -> SINT8
                 is String -> STRING
                 else -> null
             }

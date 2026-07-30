@@ -44,6 +44,18 @@ kotlin {
         compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11) }
     }
 
+    // All the code is in commonMain with no expect/actual and no java.* API, so these cost
+    // nothing but a target declaration. vcyclist consumes the klibs from commonMain.
+    js(IR) {
+        nodejs()
+        browser()
+    }
+
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+    wasmWasi {
+        nodejs()
+    }
+
     // No dependencies: the SDK is stdlib only.
     sourceSets {
         commonTest.dependencies {

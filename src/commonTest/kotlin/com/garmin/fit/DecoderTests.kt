@@ -263,8 +263,10 @@ class DecoderTests {
         assertFailsWith<IllegalStateException> {
             FitDecoder(TestData.fitFileShort).read { error("the caller's own problem") }
         }
-        assertFailsWith<OutOfMemoryError> {
-            FitDecoder(TestData.fitFileShort).read { throw OutOfMemoryError("not a decode error") }
+        // kotlin.Error rather than a JVM OutOfMemoryError: the boundary under
+        // test is Exception vs Error, and commonTest compiles for every target.
+        assertFailsWith<Error> {
+            FitDecoder(TestData.fitFileShort).read { throw Error("not a decode error") }
         }
     }
 

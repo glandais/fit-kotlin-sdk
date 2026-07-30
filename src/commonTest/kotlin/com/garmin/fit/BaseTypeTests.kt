@@ -117,18 +117,52 @@ class BaseTypeTests {
         assertFalse(BaseType.FLOAT64.isSignedInteger)
     }
 
+    /**
+     * The unsigned types, [Long] and [String] are unambiguous on every target.
+     * The signed numerics are not: Kotlin/JS represents them all as JS numbers,
+     * so [BaseType.of] can only promise there a type that holds the value
+     * losslessly, which is why they are checked loosely.
+     */
     @Test
     fun aBoxedValueMapsBackToTheBaseTypeThatHoldsIt() {
         assertEquals(BaseType.UINT8, BaseType.of(1u.toUByte()))
-        assertEquals(BaseType.SINT8, BaseType.of(1.toByte()))
         assertEquals(BaseType.UINT16, BaseType.of(1u.toUShort()))
-        assertEquals(BaseType.SINT32, BaseType.of(1))
         assertEquals(BaseType.UINT32, BaseType.of(1u))
-        assertEquals(BaseType.SINT64, BaseType.of(1L))
         assertEquals(BaseType.UINT64, BaseType.of(1uL))
-        assertEquals(BaseType.FLOAT32, BaseType.of(1.0f))
+        assertEquals(BaseType.SINT64, BaseType.of(1L))
         assertEquals(BaseType.FLOAT64, BaseType.of(1.0))
         assertEquals(BaseType.STRING, BaseType.of("x"))
         assertNull(BaseType.of(Unit))
+
+        for ((value, exact) in listOf<Pair<Any, BaseType>>(
+            1.toByte() to BaseType.SINT8,
+            1.toShort() to BaseType.SINT16,
+            1 to BaseType.SINT32,
+            1.0f to BaseType.FLOAT32,
+        )) {
+            val mapped = BaseType.of(value)
+            assertTrue(
+                mapped == exact || mapped == BaseType.FLOAT64,
+                "$value mapped to $mapped: neither $exact nor the lossless fallback FLOAT64",
+            )
+        }
+    }
+
+    /**
+     * What the mapping above is actually for: a field the profile does not know
+     * takes its width from the first value set on it. Inferring too narrow a
+     * type there would truncate, so a fractional value must survive a round
+     * trip on every target — on Kotlin/JS it is indistinguishable from a byte.
+     */
+    @Test
+    fun anUnknownFieldKeepsAFractionalValueThroughARoundTrip() {
+        val bytes = encodeFit {
+            write(FileIdMesg().apply { serialNumber = 1u })
+            write(Mesg("Custom", 0xFF00u).apply { setFieldValue(250u, 1.5) })
+        }
+
+        val result = FitDecoder(bytes).decode(DecodeOptions(includeUnknownData = true))
+        assertEquals(emptyList(), result.errors)
+        assertEquals(1.5, result.messages.unknownMesgs.single().getFieldValue(250u))
     }
 }
