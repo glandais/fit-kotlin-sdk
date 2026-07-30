@@ -9,16 +9,18 @@ Reads and writes Garmin FIT files. Profile 21.205.0-Release.
 - **Gradle 9.x with JDK 25**, or Gradle 8.x with JDK 17 or 21. Gradle 8.14 does
   not run on JDK 25 at all, so on that combination set
   `JAVA_HOME=/path/to/jdk21`.
-- Targets: `jvm`, `js` (node and browser) and `wasmWasi`. All the code is in
-  `commonMain` with no `expect`/`actual` and no `java.*` APIs, so adding a
-  native target to `build.gradle.kts` needs no source changes.
+- Targets: `jvm`, `js` and `wasmJs` (both node and browser), and `wasmWasi`.
+  All the code is in `commonMain` with no `expect`/`actual` and no `java.*`
+  APIs, so adding a native target to `build.gradle.kts` needs no source
+  changes.
 
-On Kotlin/JS, `Byte`, `Short`, `Int`, `Float` and `Double` are all the same
-runtime type — a JS number. Nothing in the API depends on telling them apart
-except [BaseType.of], which infers the width of a field the profile does not
-know from the first value set on it: there it answers `FLOAT64` for any number,
-holding the value rather than truncating it. Set such a field through a
-`Field` you built yourself if you need an exact width on that target.
+On the `js` target — not the Wasm ones, which have real types — `Byte`,
+`Short`, `Int`, `Float` and `Double` are the same runtime type, a JS number.
+Nothing in the API depends on telling them apart except [BaseType.of], which
+infers the width of a field the profile does not know from the first value set
+on it: there it answers `FLOAT64` for any number, holding the value rather than
+truncating it. Set such a field through a `Field` you built yourself if you
+need an exact width on that target.
 
 ## Decoding
 
