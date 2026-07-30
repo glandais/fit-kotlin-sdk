@@ -1,10 +1,8 @@
 # FIT Kotlin Multiplatform SDK
 
-Reads and writes Garmin FIT files. Profile 21.205.0Release.
+Reads and writes Garmin FIT files. Profile 21.205.0-Release.
 
-> **Everything under `src/` is machine-generated.** The next profile drop
-> replaces the whole tree, so hand edits are lost. Change the FitGen templates
-> under `fitgen/templates/kt/` instead.
+> **Everything under `src/` is machine-generated.**
 
 ## Requirements
 
