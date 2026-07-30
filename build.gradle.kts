@@ -18,7 +18,19 @@ plugins {
 // belongs to Garmin. io.github.glandais is the namespace the GitHub account
 // this is published from can prove.
 group = "io.github.glandais"
-version = "21.205.0"
+
+// The default is the FIT profile version this SDK was generated from. A release of the
+// Kotlin SDK at an unchanged profile — a bug fix in the runtime or the templates — adds a
+// fourth numeric component: 21.205.0.1, 21.205.0.2. Four numeric parts rather than
+// `21.205.0-1`, which Maven and Gradle order differently, or `-r1`, which both read as a
+// pre-release and therefore sort *below* 21.205.0.
+//
+// Assigning `version` here would win over a plain `-Pversion=`, and an init script setting
+// it in `afterEvaluate` runs too late — `coordinates()` below captures the value at
+// configuration time. Hence the explicit property: it is the only override point that
+// leaves this generated file untouched.
+version = providers.gradleProperty("releaseVersion")
+    .getOrElse("21.205.0")
 
 repositories {
     mavenCentral()

@@ -1,0 +1,40 @@
+name: check
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v5
+        with:
+          java-version: 25
+          distribution: temurin
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      # `check` compiles commonMain and runs the 196 tests on the jvm target. The wrapper
+      # pins Gradle 9.3.0, which is load-bearing: Gradle 8.14 cannot start at all on JDK 25.
+      - run: ./gradlew check
+
+      # A release publishes the POM as much as the jar, and the POM is only materialised by a
+      # publish task — `check` never builds it. Publishing to the local repo here means a
+      # malformed POM (bad coordinates, missing licence block) fails on a pull request rather
+      # than halfway through a release, when the Central Portal has already accepted a
+      # deployment that cannot be taken back. It also exercises the `-PreleaseVersion`
+      # override that release.yml depends on.
+      - name: Verify the publication builds and carries the release version
+        run: |
+          set -euo pipefail
+          ./gradlew publishToMavenLocal -PreleaseVersion=99.99.99.99
+          POM=~/.m2/repository/io/github/glandais/fit-kotlin-sdk/99.99.99.99/fit-kotlin-sdk-99.99.99.99.pom
+          test -f "$POM" || { echo "no POM at the overridden version: $POM"; exit 1; }
+          grep -q "<version>99.99.99.99</version>" "$POM" || {
+            echo "-PreleaseVersion did not reach the POM"; cat "$POM"; exit 1; }
+          echo "publication OK"

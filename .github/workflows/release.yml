@@ -1,0 +1,100 @@
+name: release
+
+# Manual only. Every release of this SDK follows a regeneration run from `fitgen`, which is a
+# deliberate act performed locally — there is no commit stream carrying enough semantics to
+# decide a version automatically, and nothing to gain from publishing on every push.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish, e.g. 21.205.0 or 21.205.0.1 (profile version, plus a fourth component for SDK revisions at an unchanged profile)'
+        required: true
+        type: string
+      dry_run:
+        description: 'Build, sign and stage everything without releasing to Maven Central'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write # annotated tag + GitHub Release
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Validate the version and check the tag is free
+        run: |
+          set -euo pipefail
+          VERSION='${{ inputs.version }}'
+          # Three or four numeric components. Anything else — a `-1` suffix, an `-r1`, a stray
+          # `v` — orders unpredictably across Maven and Gradle, and Central releases are
+          # permanent, so reject it here rather than discover it in a consumer's build.
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || {
+            echo "::error::'$VERSION' is not N.N.N or N.N.N.N"; exit 1; }
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            echo "::error::tag v$VERSION already exists — Maven Central will not accept a re-release of the same version either"
+            exit 1
+          fi
+
+      - uses: actions/setup-java@v5
+        with:
+          java-version: 25
+          distribution: temurin
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Run the full check
+        run: ./gradlew check
+
+      - name: Import the GPG key
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+          KEY_ID=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/{print $5; exit}')
+          echo "default-key $KEY_ID" >> ~/.gnupg/gpg.conf
+
+      # `signAllPublications()` in build.gradle.kts activates only when a key is present, so
+      # these four variables are what turn an unsigned local build into a signed release.
+      - name: Publish to Maven Central
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.CENTRAL_TOKEN }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_PRIVATE_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [ '${{ inputs.dry_run }}' = 'true' ]; then
+            # Uploads a deployment to the Central Portal and leaves it there for inspection
+            # instead of releasing it. It still has to be dropped by hand in the portal UI.
+            ./gradlew publishToMavenCentral -PreleaseVersion='${{ inputs.version }}'
+            echo "Dry run: deployment staged, not released. Drop it in the Central Portal."
+          else
+            ./gradlew publishAndReleaseToMavenCentral -PreleaseVersion='${{ inputs.version }}'
+          fi
+
+      # After the publish, not before: a tag pointing at a release that failed to upload is
+      # worse than no tag, since the version can never be published under that name again.
+      - name: Tag and create the GitHub Release
+        if: ${{ inputs.dry_run != true }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION='${{ inputs.version }}'
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git tag -a "v$VERSION" -m "fit-kotlin-sdk $VERSION"
+          git push origin "v$VERSION"
+          PROFILE=$(grep -oP 'Profile Version = \K[0-9.]+' build.gradle.kts | head -1)
+          gh release create "v$VERSION" \
+            --title "fit-kotlin-sdk $VERSION" \
+            --generate-notes \
+            --notes "Published to Maven Central as \`io.github.glandais:fit-kotlin-sdk:$VERSION\`, generated from FIT profile $PROFILE."

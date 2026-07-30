@@ -1,0 +1,52 @@
+version: 2
+updates:
+  # Almost every file in this repository is emitted by `fitgen -kotlin`, build.gradle.kts
+  # included. A Dependabot bump of the Kotlin or maven-publish plugin therefore edits a
+  # generated file, and the next regeneration silently reverts it. Treat those PRs as a
+  # notification rather than a fix: port the new version into
+  # `fitgen/templates/kt/build_gradle_kts.kts`, regenerate, and close the PR.
+  #
+  # The `.github/` directory and the Gradle wrapper are not generated — regeneration only
+  # replaces `*.kts` at the root and the sources under `src/` — so github-actions bumps merge
+  # normally.
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    assignees:
+      - "glandais"
+    commit-message:
+      prefix: "deps(gradle)"
+      include: "scope"
+    labels:
+      - "dependencies"
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "10:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    assignees:
+      - "glandais"
+    commit-message:
+      prefix: "deps(github-actions)"
+      include: "scope"
+    labels:
+      - "dependencies"
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
