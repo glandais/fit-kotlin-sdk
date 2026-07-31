@@ -32,6 +32,27 @@ group = "io.github.glandais"
 version = providers.gradleProperty("releaseVersion")
     .getOrElse("21.205.0")
 
+// npm takes three version components; Maven Central takes an optional fourth, for a release
+// of this SDK at an unchanged profile. The fourth becomes npm's patch component — 21.205.0.1
+// is 21.205.1 on npm — which is a faithful mapping only while the profile's own build number
+// stays 0, as it has for every release so far. The `error` is the guard: a profile 21.205.1
+// with an SDK revision on top has no honest three-component form, and inventing one would put
+// two different artefacts under one npm version, which npm never lets you take back.
+val npmVersion: String = run {
+    val parts = version.toString().split(".")
+    if (parts.size < 4) {
+        version.toString()
+    } else {
+        if (parts[2] != "0") {
+            error(
+                "cannot map version ${version} onto npm: its profile build component is not 0, " +
+                    "so the SDK revision has nowhere to go. Publish it under a three-component version.",
+            )
+        }
+        "${parts[0]}.${parts[1]}.${parts[3]}"
+    }
+}
+
 repositories {
     mavenCentral()
 }
@@ -71,12 +92,15 @@ kotlin {
         compilations.named("main") {
             packageJson {
                 customField("name", "@glandais/fit-kotlin-sdk")
+                customField("version", npmVersion)
                 customField("publishConfig", mapOf("access" to "public"))
                 customField(
                     "description",
                     "Garmin FIT protocol decoder and encoder, generated from the FIT profile",
                 )
-                customField("license", "FIT Protocol License Agreement")
+                // Not an SPDX identifier, so it has to be named this way; npm always ships
+                // LICENSE.txt, which npmPublishJs copies in next to the README.
+                customField("license", "SEE LICENSE IN LICENSE.txt")
                 customField(
                     "repository",
                     mapOf(
@@ -84,6 +108,16 @@ kotlin {
                         "url" to "https://github.com/glandais/fit-kotlin-sdk.git",
                     ),
                 )
+                // Without this the npm package would carry the browser demo too: the library
+                // and the executable distributions are both fed by jsProcessResources, so
+                // index.html, demo.js, demo.css and the sample activity land in each. The
+                // exclusion is needed on top of the globs because npm reads this list with
+                // gitignore semantics, under which a bare `*.js` matches at any depth — the
+                // demo's own script included. Naming the bundle files instead would break
+                // the day the Kotlin stdlib chunk is renamed.
+                // README.md and LICENSE.txt ship regardless of this list; npm always
+                // includes them.
+                customField("files", listOf("*.js", "*.js.map", "*.d.ts", "!demo.js"))
             }
         }
     }
@@ -155,17 +189,19 @@ mavenPublishing {
 
 // ------------------------------------------------------------------ npm and GitHub Pages
 
-// The npm package ships the same README as Maven Central and the repository front page.
-val copyReadmeToJsPackage =
-    tasks.register<Copy>("copyReadmeToJsPackage") {
+// The npm package ships the same README and licence as Maven Central and the repository
+// front page. npm includes both whatever the `files` list says, so they have to be there.
+val copyDocsToJsPackage =
+    tasks.register<Copy>("copyDocsToJsPackage") {
         from(layout.projectDirectory.file("README.md"))
+        from(layout.projectDirectory.file("LICENSE.txt"))
         into(layout.buildDirectory.dir("dist/js/productionLibrary"))
     }
 
 tasks.register<Exec>("npmPublishJs") {
     group = "publishing"
     description = "Publish the Kotlin/JS library to npm as @glandais/fit-kotlin-sdk"
-    dependsOn("jsBrowserProductionLibraryDistribution", copyReadmeToJsPackage)
+    dependsOn("jsBrowserProductionLibraryDistribution", copyDocsToJsPackage)
     workingDir =
         layout.buildDirectory
             .dir("dist/js/productionLibrary")

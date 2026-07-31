@@ -140,6 +140,10 @@ npm as [`@glandais/fit-kotlin-sdk`](https://www.npmjs.com/package/@glandais/fit-
 with TypeScript definitions, and the exported names are flat — the source set has no
 `package`, precisely so that consumers write `decodeFit` and not `com.garmin.fit.decodeFit`.
 
+```sh
+npm install @glandais/fit-kotlin-sdk
+```
+
 ```js
 import { decodeFit, isFitFile, fitFieldInfo, fitProfileVersion } from '@glandais/fit-kotlin-sdk'
 
@@ -197,6 +201,20 @@ const bytes = encodeFit([
 `fitFieldInfo('record', 'heartRate')` reports what the profile says about a field — number,
 units, scale, offset, base type, profile type — which is enough to label a table without a
 lookup table of your own.
+
+The package is a UMD bundle, which named imports above reach through any bundler
+(webpack, Vite, esbuild) and through TypeScript. Node's own ESM loader is stricter and
+needs the default import:
+
+```js
+import pkg from '@glandais/fit-kotlin-sdk'
+const { decodeFit } = pkg
+// or: const { decodeFit } = require('@glandais/fit-kotlin-sdk')
+```
+
+npm versions have three components where a release of this SDK may have four, so a revision
+at an unchanged profile moves the fourth into the patch: Maven Central's `21.205.0.1` is
+npm's `21.205.1`. `21.205.0` is the same on both.
 
 One limit worth stating: a `uint64` beyond 2^53 arrives rounded, because a JavaScript
 number has 53 bits of mantissa. Only the FIT `*_64` types and a few device serial fields

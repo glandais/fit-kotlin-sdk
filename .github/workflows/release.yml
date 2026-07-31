@@ -11,13 +11,14 @@ on:
         required: true
         type: string
       dry_run:
-        description: 'Build, sign and stage everything without releasing to Maven Central'
+        description: 'Build, sign and stage everything without releasing to Maven Central or npm'
         required: false
         default: false
         type: boolean
 
 permissions:
   contents: write # annotated tag + GitHub Release
+  id-token: write # OIDC for npm trusted publishing, so no long-lived token is needed
 
 concurrency:
   group: release
@@ -50,9 +51,22 @@ jobs:
           java-version: 25
           distribution: temurin
 
+      - uses: actions/setup-node@v5
+        with:
+          # npm 11.5 or newer is what implements OIDC trusted publishing; node 24 ships it.
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org/'
+
       - uses: gradle/actions/setup-gradle@v6
 
       - name: Run the full check
+        # actions/setup-node (registry-url) writes an .npmrc holding
+        # `_authToken=${NODE_AUTH_TOKEN}`, and Kotlin's bundled yarn fails hard on an
+        # undefined variable there ("Failed to replace env in config"). `check` publishes
+        # nothing, so an empty value simply lets yarn resolve the placeholder. Do not hoist
+        # this to the job level — it would override the token on the publish step below.
+        env:
+          NODE_AUTH_TOKEN: ''
         run: ./gradlew check
 
       - name: Import the GPG key
@@ -80,6 +94,26 @@ jobs:
             ./gradlew publishAndReleaseToMavenCentral -PreleaseVersion='${{ inputs.version }}'
           fi
 
+      # npm takes three version components, so 21.205.0.1 is published there as 21.205.1 —
+      # build.gradle.kts does the mapping and refuses the case it cannot express honestly.
+      #
+      # Auth: with a trusted publisher configured for the package on npmjs.com, the OIDC
+      # token from `id-token: write` is enough and NPM_TOKEN can stay unset. A package that
+      # does not exist yet cannot have a trusted publisher, so the *first* release needs an
+      # NPM_TOKEN secret (a granular token with publish rights on @glandais).
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ '${{ inputs.dry_run }}' = 'true' ]; then
+            ./gradlew jsBrowserProductionLibraryDistribution copyDocsToJsPackage -PreleaseVersion='${{ inputs.version }}'
+            cd build/dist/js/productionLibrary
+            npm publish --dry-run --access public
+          else
+            ./gradlew npmPublishJs -PreleaseVersion='${{ inputs.version }}'
+          fi
+
       # After the publish, not before: a tag pointing at a release that failed to upload is
       # worse than no tag, since the version can never be published under that name again.
       - name: Tag and create the GitHub Release
@@ -94,7 +128,9 @@ jobs:
           git tag -a "v$VERSION" -m "fit-kotlin-sdk $VERSION"
           git push origin "v$VERSION"
           PROFILE=$(grep -oP 'Profile Version = \K[0-9.]+' build.gradle.kts | head -1)
+          # Same mapping as build.gradle.kts: a fourth component becomes npm's patch.
+          NPM_VERSION=$(echo "$VERSION" | awk -F. 'NF==4 {print $1"."$2"."$4; next} {print}')
           gh release create "v$VERSION" \
             --title "fit-kotlin-sdk $VERSION" \
             --generate-notes \
-            --notes "Published to Maven Central as \`io.github.glandais:fit-kotlin-sdk:$VERSION\`, generated from FIT profile $PROFILE."
+            --notes "Published to Maven Central as \`io.github.glandais:fit-kotlin-sdk:$VERSION\` and to npm as \`@glandais/fit-kotlin-sdk@$NPM_VERSION\`, generated from FIT profile $PROFILE."
