@@ -19,11 +19,15 @@ plugins {
 // this is published from can prove.
 group = "io.github.glandais"
 
-// The default is the FIT profile version this SDK was generated from. A release of the
-// Kotlin SDK at an unchanged profile — a bug fix in the runtime or the templates — adds a
-// fourth numeric component: 21.205.0.1, 21.205.0.2. Four numeric parts rather than
-// `21.205.0-1`, which Maven and Gradle order differently, or `-r1`, which both read as a
-// pre-release and therefore sort *below* 21.205.0.
+// The default is the FIT profile version this SDK was generated from. Three numeric
+// components, always: `major.minor` follow the profile, and the patch starts at the
+// profile's own build number and is what a release of this SDK at an unchanged profile
+// increments — 21.205.0 regenerated at profile 21.205.0 releases again as 21.205.1.
+//
+// Three and not four (21.205.0.1) because npm has no fourth component and normalises one
+// into `21.205.0-1`, a *prerelease* that `^21.205.0` excludes: the fix would never reach a
+// consumer resolving a range. Not `-1` or `-r1` either — Maven and Gradle order those
+// differently, and both read them as sorting *below* 21.205.0.
 //
 // Assigning `version` here would win over a plain `-Pversion=`, and an init script setting
 // it in `afterEvaluate` runs too late — `coordinates()` below captures the value at
@@ -31,27 +35,6 @@ group = "io.github.glandais"
 // leaves this generated file untouched.
 version = providers.gradleProperty("releaseVersion")
     .getOrElse("21.205.0")
-
-// npm takes three version components; Maven Central takes an optional fourth, for a release
-// of this SDK at an unchanged profile. The fourth becomes npm's patch component — 21.205.0.1
-// is 21.205.1 on npm — which is a faithful mapping only while the profile's own build number
-// stays 0, as it has for every release so far. The `error` is the guard: a profile 21.205.1
-// with an SDK revision on top has no honest three-component form, and inventing one would put
-// two different artefacts under one npm version, which npm never lets you take back.
-val npmVersion: String = run {
-    val parts = version.toString().split(".")
-    if (parts.size < 4) {
-        version.toString()
-    } else {
-        if (parts[2] != "0") {
-            error(
-                "cannot map version ${version} onto npm: its profile build component is not 0, " +
-                    "so the SDK revision has nowhere to go. Publish it under a three-component version.",
-            )
-        }
-        "${parts[0]}.${parts[1]}.${parts[3]}"
-    }
-}
 
 repositories {
     mavenCentral()
@@ -92,7 +75,6 @@ kotlin {
         compilations.named("main") {
             packageJson {
                 customField("name", "@glandais/fit-kotlin-sdk")
-                customField("version", npmVersion)
                 customField("publishConfig", mapOf("access" to "public"))
                 customField(
                     "description",

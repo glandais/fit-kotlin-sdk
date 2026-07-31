@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to publish, e.g. 21.205.0 or 21.205.0.1 (profile version, plus a fourth component for SDK revisions at an unchanged profile)'
+        description: 'Version to publish, e.g. 21.205.1 — three numeric components: major.minor from the FIT profile, patch incremented per SDK release'
         required: true
         type: string
       dry_run:
@@ -36,11 +36,12 @@ jobs:
         run: |
           set -euo pipefail
           VERSION='${{ inputs.version }}'
-          # Three or four numeric components. Anything else — a `-1` suffix, an `-r1`, a stray
-          # `v` — orders unpredictably across Maven and Gradle, and Central releases are
-          # permanent, so reject it here rather than discover it in a consumer's build.
-          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || {
-            echo "::error::'$VERSION' is not N.N.N or N.N.N.N"; exit 1; }
+          # Exactly three numeric components. A fourth has no npm equivalent, and a `-1`,
+          # an `-r1` or a stray `v` orders unpredictably across Maven and Gradle — while
+          # Central releases and npm publishes are both permanent, so reject it here rather
+          # than discover it in a consumer's build.
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "::error::'$VERSION' is not N.N.N"; exit 1; }
           if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
             echo "::error::tag v$VERSION already exists — Maven Central will not accept a re-release of the same version either"
             exit 1
@@ -94,9 +95,6 @@ jobs:
             ./gradlew publishAndReleaseToMavenCentral -PreleaseVersion='${{ inputs.version }}'
           fi
 
-      # npm takes three version components, so 21.205.0.1 is published there as 21.205.1 —
-      # build.gradle.kts does the mapping and refuses the case it cannot express honestly.
-      #
       # Auth: with a trusted publisher configured for the package on npmjs.com, the OIDC
       # token from `id-token: write` is enough and NPM_TOKEN can stay unset. A package that
       # does not exist yet cannot have a trusted publisher, so the *first* release needs an
@@ -128,9 +126,7 @@ jobs:
           git tag -a "v$VERSION" -m "fit-kotlin-sdk $VERSION"
           git push origin "v$VERSION"
           PROFILE=$(grep -oP 'Profile Version = \K[0-9.]+' build.gradle.kts | head -1)
-          # Same mapping as build.gradle.kts: a fourth component becomes npm's patch.
-          NPM_VERSION=$(echo "$VERSION" | awk -F. 'NF==4 {print $1"."$2"."$4; next} {print}')
           gh release create "v$VERSION" \
             --title "fit-kotlin-sdk $VERSION" \
             --generate-notes \
-            --notes "Published to Maven Central as \`io.github.glandais:fit-kotlin-sdk:$VERSION\` and to npm as \`@glandais/fit-kotlin-sdk@$NPM_VERSION\`, generated from FIT profile $PROFILE."
+            --notes "Published to Maven Central as \`io.github.glandais:fit-kotlin-sdk:$VERSION\` and to npm as \`@glandais/fit-kotlin-sdk@$VERSION\`, generated from FIT profile $PROFILE."
