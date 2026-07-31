@@ -10,6 +10,15 @@ on:
         description: 'Version to publish, e.g. 21.205.1 — three numeric components: major.minor from the FIT profile, patch incremented per SDK release'
         required: true
         type: string
+      targets:
+        description: 'Where to publish. Maven Central refuses a version it already holds, so a release that got through it and failed later has to be resumed with `npm` alone.'
+        required: false
+        default: 'maven-central-and-npm'
+        type: choice
+        options:
+          - maven-central-and-npm
+          - maven-central
+          - npm
       dry_run:
         description: 'Build, sign and stage everything without releasing to Maven Central or npm'
         required: false
@@ -42,9 +51,16 @@ jobs:
           # than discover it in a consumer's build.
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
             echo "::error::'$VERSION' is not N.N.N"; exit 1; }
+          # An existing tag means this version was released once already, which Maven Central
+          # will not accept a second time. It is not an error when resuming with npm alone:
+          # that is precisely the case where the tag may be there and the package is not.
           if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
-            echo "::error::tag v$VERSION already exists — Maven Central will not accept a re-release of the same version either"
-            exit 1
+            if [ '${{ inputs.targets }}' = 'npm' ]; then
+              echo "tag v$VERSION already exists; resuming the npm publish only"
+            else
+              echo "::error::tag v$VERSION already exists — Maven Central will not accept a re-release of the same version either"
+              exit 1
+            fi
           fi
 
       - uses: actions/setup-java@v5
@@ -79,6 +95,7 @@ jobs:
       # `signAllPublications()` in build.gradle.kts activates only when a key is present, so
       # these four variables are what turn an unsigned local build into a signed release.
       - name: Publish to Maven Central
+        if: ${{ inputs.targets != 'npm' }}
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.CENTRAL_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.CENTRAL_TOKEN }}
@@ -100,6 +117,7 @@ jobs:
       # does not exist yet cannot have a trusted publisher, so the *first* release needs an
       # NPM_TOKEN secret (a granular token with publish rights on @glandais).
       - name: Publish to npm
+        if: ${{ inputs.targets != 'maven-central' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
@@ -121,10 +139,20 @@ jobs:
         run: |
           set -euo pipefail
           VERSION='${{ inputs.version }}'
-          git config user.name 'github-actions[bot]'
-          git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git tag -a "v$VERSION" -m "fit-kotlin-sdk $VERSION"
-          git push origin "v$VERSION"
+          # Already tagged when resuming a half-finished release; the GitHub Release below
+          # is then the part that is still missing.
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            echo "tag v$VERSION already exists, keeping it"
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email 'github-actions[bot]@users.noreply.github.com'
+            git tag -a "v$VERSION" -m "fit-kotlin-sdk $VERSION"
+            git push origin "v$VERSION"
+          fi
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "release v$VERSION already exists, nothing to create"
+            exit 0
+          fi
           PROFILE=$(grep -oP 'Profile Version = \K[0-9.]+' build.gradle.kts | head -1)
           gh release create "v$VERSION" \
             --title "fit-kotlin-sdk $VERSION" \
