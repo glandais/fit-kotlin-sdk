@@ -17,7 +17,7 @@ jobs:
           java-version: 25
           distribution: temurin
 
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@v6.2.0
 
       # `check` compiles commonMain and runs the 196 tests on the jvm target. The wrapper
       # pins Gradle 9.3.0, which is load-bearing: Gradle 8.14 cannot start at all on JDK 25.
