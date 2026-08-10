@@ -39,7 +39,7 @@ jobs:
           java-version: 25
           distribution: temurin
 
-      - uses: gradle/actions/setup-gradle@v6.2.0
+      - uses: gradle/actions/setup-gradle@v6.3.0
 
       # `demo` is jsBrowserDistribution: the production webpack bundle and the static
       # files next to it, in one directory ready to be served.
