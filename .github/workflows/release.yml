@@ -74,7 +74,7 @@ jobs:
           node-version: 24
           registry-url: 'https://registry.npmjs.org/'
 
-      - uses: gradle/actions/setup-gradle@v6.2.0
+      - uses: gradle/actions/setup-gradle@v6.3.0
 
       - name: Run the full check
         # actions/setup-node (registry-url) writes an .npmrc holding
