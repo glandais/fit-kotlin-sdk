@@ -126,7 +126,7 @@ class FitJsTests {
 
     @Test
     fun profileVersionMatchesTheGeneratedProfile() {
-        assertEquals("21.205.0", fitProfileVersion())
+        assertEquals("21.213.0", fitProfileVersion())
     }
 
     @Test

@@ -1,6 +1,6 @@
 # FIT Kotlin Multiplatform SDK
 
-Reads and writes Garmin FIT files. Profile 21.205.0-Release.
+Reads and writes Garmin FIT files. Profile 21.213.0-Release.
 
 > **Everything under `src/` is machine-generated**, with one exception:
 > `src/jsMain/resources`, the browser demo, is hand-written and local to this repository.
