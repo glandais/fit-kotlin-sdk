@@ -1,9 +1,43 @@
 # FIT Kotlin Multiplatform SDK
 
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.glandais/fit-kotlin-sdk?label=io.github.glandais%3Afit-kotlin-sdk)](https://central.sonatype.com/artifact/io.github.glandais/fit-kotlin-sdk)
+[![npm](https://img.shields.io/npm/v/@glandais/fit-kotlin-sdk?label=%40glandais%2Ffit-kotlin-sdk)](https://www.npmjs.com/package/@glandais/fit-kotlin-sdk)
+
 Reads and writes Garmin FIT files. Profile 21.213.0-Release.
 
 > **Everything under `src/` is machine-generated**, with one exception:
 > `src/jsMain/resources`, the browser demo, is hand-written and local to this repository.
+
+## Install
+
+The two distributions carry the same profile version, which is the SDK's version: the
+badges above are the latest of each.
+
+### Gradle / Maven — Kotlin, Java and Kotlin Multiplatform
+
+```kotlin
+// Gradle Kotlin DSL
+dependencies {
+    implementation("io.github.glandais:fit-kotlin-sdk:21.213.0")
+}
+```
+
+KMP consumers resolve their own variant through Gradle module metadata; the published
+per-target artifacts are
+[`-jvm`](https://central.sonatype.com/artifact/io.github.glandais/fit-kotlin-sdk-jvm),
+[`-js`](https://central.sonatype.com/artifact/io.github.glandais/fit-kotlin-sdk-js),
+[`-wasm-js`](https://central.sonatype.com/artifact/io.github.glandais/fit-kotlin-sdk-wasm-js) and
+[`-wasm-wasi`](https://central.sonatype.com/artifact/io.github.glandais/fit-kotlin-sdk-wasm-wasi).
+A plain JVM (or Java) project can depend on `fit-kotlin-sdk-jvm` directly.
+
+### npm — JavaScript and TypeScript
+
+```sh
+npm install @glandais/fit-kotlin-sdk
+```
+
+Ships `.d.ts` definitions and runs in both browsers and Node.js. The API it exposes is not
+the Kotlin one — see [JavaScript and TypeScript](#javascript-and-typescript).
 
 ## Requirements
 
@@ -139,10 +173,7 @@ classes, `Date`s instead of FIT timestamps, `"cycling"` instead of `2`. It is pu
 npm as [`@glandais/fit-kotlin-sdk`](https://www.npmjs.com/package/@glandais/fit-kotlin-sdk)
 with TypeScript definitions, and the exported names are flat — the source set has no
 `package`, precisely so that consumers write `decodeFit` and not `com.garmin.fit.decodeFit`.
-
-```sh
-npm install @glandais/fit-kotlin-sdk
-```
+Install it with [npm](#npm--javascript-and-typescript).
 
 ```js
 import { decodeFit, isFitFile, fitFieldInfo, fitProfileVersion } from '@glandais/fit-kotlin-sdk'
