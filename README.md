@@ -3,7 +3,7 @@
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.glandais/fit-kotlin-sdk?label=io.github.glandais%3Afit-kotlin-sdk)](https://central.sonatype.com/artifact/io.github.glandais/fit-kotlin-sdk)
 [![npm](https://img.shields.io/npm/v/@glandais/fit-kotlin-sdk?label=%40glandais%2Ffit-kotlin-sdk)](https://www.npmjs.com/package/@glandais/fit-kotlin-sdk)
 
-Reads and writes Garmin FIT files. Profile 21.213.0-Release.
+Reads and writes Garmin FIT files. Profile 21.215.0-Release.
 
 > **Everything under `src/` is machine-generated**, with one exception:
 > `src/jsMain/resources`, the browser demo, is hand-written and local to this repository.
@@ -18,7 +18,7 @@ badges above are the latest of each.
 ```kotlin
 // Gradle Kotlin DSL
 dependencies {
-    implementation("io.github.glandais:fit-kotlin-sdk:21.213.0")
+    implementation("io.github.glandais:fit-kotlin-sdk:21.215.0")
 }
 ```
 
