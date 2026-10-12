@@ -10,7 +10,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 plugins {
-    kotlin("multiplatform") version "2.4.20"
+    kotlin("multiplatform") version "2.4.21"
     id("com.vanniktech.maven.publish") version "0.37.0"
 }
 
